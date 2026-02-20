@@ -2,7 +2,7 @@ import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
 import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
-import {findOneWayValue} from 'my-nft-gen/src/core/math/findOneWayValue.js';
+
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {LissajousCageConfig} from './LissajousCageConfig.js';
 
@@ -96,7 +96,8 @@ export class LissajousCageEffect extends LayerEffect {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
         const baseWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
 
-        const tumblePhase = findOneWayValue(0, this.data.speed * Math.PI * 2, 1, numberOfFrames, currentFrame, false);
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const tumblePhase = progress * this.data.speed * Math.PI * 2;
         const tumbleX = findValue(-0.4, 0.4, this.data.tumbleFrequency, numberOfFrames, currentFrame) + tumblePhase * 0.3;
         const tumbleY = tumblePhase;
 

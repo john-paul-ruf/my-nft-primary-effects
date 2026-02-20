@@ -7,6 +7,7 @@ import { Settings, Project } from 'my-nft-gen';
 import { LayerConfig } from 'my-nft-gen/src/core/layer/LayerConfig.js';
 import { ColorScheme } from 'my-nft-gen/src/core/color/ColorScheme.js';
 import { ALL_PRESETS } from '../src/effects/presets.js';
+import sharp from 'sharp';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
@@ -22,6 +23,8 @@ function parseArgs() {
     height: 1920,
     output: null,
     saveFrames: false,
+    validateLoop: false,
+    loopThreshold: 5,
     verbose: false,
     debug: false,
     help: false
@@ -37,6 +40,8 @@ function parseArgs() {
     else if (arg === '--height') options.height = parseInt(args[++i], 10);
     else if (arg === '--output') options.output = args[++i];
     else if (arg === '--save-frames') options.saveFrames = true;
+    else if (arg === '--validate-loop') options.validateLoop = true;
+    else if (arg === '--loop-threshold') options.loopThreshold = parseFloat(args[++i]);
     else if (arg === '--verbose' || arg === '-v') options.verbose = true;
     else if (arg === '--debug') options.debug = true;
     else if (arg === '--help' || arg === '-h') options.help = true;
@@ -68,6 +73,8 @@ OPTIONS:
   --height <px>                Canvas height (default: 1920)
   --output <path>              Output directory for frames
   --save-frames                Save rendered frames to disk
+  --validate-loop              Validate loop continuity (compares first vs last frame)
+  --loop-threshold <pct>       Max allowed pixel diff % for loop validation (default: 5)
   --verbose, -v                Verbose output
   --debug                      Debug mode with detailed logging
   --help, -h                   Show this help message
@@ -133,7 +140,7 @@ async function loadRegistries(options) {
   }
 
   try {
-    const pluginModule = await import(path.join(projectRoot, 'plugin.js'));
+    const pluginModule = await import(path.join(projectRoot, 'my-nft-primary-effects-plugins.js'));
     await pluginModule.register(EffectRegistry, PositionRegistry);
   } catch (e) {
     console.error('❌ Error: Cannot register plugin effects');
@@ -167,6 +174,29 @@ function getAllEffects() {
     { dir: 'WaveCollapse', effectFile: 'WaveCollapseEffect.js', configFile: 'WaveCollapseConfig.js', effectClass: 'WaveCollapseEffect', configClass: 'WaveCollapseConfig' },
     { dir: 'SonicRosette', effectFile: 'SonicRosetteEffect.js', configFile: 'SonicRosetteConfig.js', effectClass: 'SonicRosetteEffect', configClass: 'SonicRosetteConfig' },
   ];
+}
+
+async function compareFrames(framePath0, framePathLast) {
+  const [raw0, rawLast] = await Promise.all([
+    sharp(framePath0).raw().ensureAlpha().toBuffer({ resolveWithObject: true }),
+    sharp(framePathLast).raw().ensureAlpha().toBuffer({ resolveWithObject: true }),
+  ]);
+
+  const buf0 = raw0.data;
+  const bufLast = rawLast.data;
+  const pixelCount = buf0.length / 4;
+  let totalDiff = 0;
+
+  for (let i = 0; i < buf0.length; i += 4) {
+    const dr = Math.abs(buf0[i] - bufLast[i]);
+    const dg = Math.abs(buf0[i + 1] - bufLast[i + 1]);
+    const db = Math.abs(buf0[i + 2] - bufLast[i + 2]);
+    totalDiff += (dr + dg + db) / 3;
+  }
+
+  const meanDiff = totalDiff / pixelCount;
+  const diffPercent = (meanDiff / 255) * 100;
+  return { meanDiff, diffPercent, pixelCount };
 }
 
 async function renderEffect({ EffectRegistry, effectEntry, options }) {
@@ -238,8 +268,17 @@ async function renderEffect({ EffectRegistry, effectEntry, options }) {
 
   nftProject.addPrimaryEffect({ layerConfig });
 
+  let capturedWorkingDir = null;
+  let capturedFinalFileName = null;
+  nftProject.on('generationCompleted', (data) => {
+    capturedWorkingDir = data.workingDirectory;
+    capturedFinalFileName = data.finalFileName;
+  });
+
+  const keepFrames = options.saveFrames || options.validateLoop;
+
   const startTime = performance.now();
-  const result = await nftProject.generateRandomLoop(options.saveFrames);
+  const result = await nftProject.generateRandomLoop(keepFrames);
   const endTime = performance.now();
 
   const totalDuration = endTime - startTime;
@@ -247,7 +286,30 @@ async function renderEffect({ EffectRegistry, effectEntry, options }) {
   const errorCount = result?.framesFailed || 0;
   const failedFrames = result?.failedFrames || [];
 
-  return { effectName, presetUsed, totalDuration, successCount, errorCount, failedFrames };
+  let loopValidation = null;
+  if (options.validateLoop && capturedWorkingDir && capturedFinalFileName) {
+    const frame0Path = `${capturedWorkingDir}${capturedFinalFileName}-frame-0.png`;
+    const lastFrameNum = options.frames - 1;
+    const frameLastPath = `${capturedWorkingDir}${capturedFinalFileName}-frame-${lastFrameNum}.png`;
+
+    if (fs.existsSync(frame0Path) && fs.existsSync(frameLastPath)) {
+      const comparison = await compareFrames(frame0Path, frameLastPath);
+      loopValidation = {
+        ...comparison,
+        passed: comparison.diffPercent <= options.loopThreshold,
+        frame0: frame0Path,
+        frameLast: frameLastPath,
+      };
+    } else {
+      loopValidation = { error: 'Frame files not found', passed: false };
+    }
+
+    if (!options.saveFrames && capturedWorkingDir) {
+      fs.rmSync(capturedWorkingDir, { recursive: true, force: true });
+    }
+  }
+
+  return { effectName, presetUsed, totalDuration, successCount, errorCount, failedFrames, loopValidation };
 }
 
 async function runTest() {
@@ -348,6 +410,17 @@ async function runTest() {
           });
         }
       }
+
+      if (result.loopValidation) {
+        const lv = result.loopValidation;
+        if (lv.error) {
+          console.log(`   🔄 Loop: ⚠️  ${lv.error}`);
+        } else if (lv.passed) {
+          console.log(`   🔄 Loop: ✅ PASS (diff: ${lv.diffPercent.toFixed(2)}%, threshold: ${options.loopThreshold}%)`);
+        } else {
+          console.log(`   🔄 Loop: ❌ FAIL (diff: ${lv.diffPercent.toFixed(2)}%, threshold: ${options.loopThreshold}%)`);
+        }
+      }
     } catch (error) {
       results.push({ effectName: kebab, status: 'fail', error: error.message });
       failed++;
@@ -383,8 +456,38 @@ async function runTest() {
     console.log('');
   }
 
-  if (failed > 0) {
-    console.log(`\n❌ ${failed} effect(s) failed!\n`);
+  if (options.validateLoop) {
+    const loopResults = results.filter(r => r.loopValidation);
+    const loopPassed = loopResults.filter(r => r.loopValidation?.passed);
+    const loopFailed = loopResults.filter(r => r.loopValidation && !r.loopValidation.passed);
+
+    console.log('🔄 LOOP VALIDATION RESULTS:');
+    console.log(`   ${loopPassed.length} passed, ${loopFailed.length} failed (threshold: ${options.loopThreshold}%)\n`);
+
+    if (loopFailed.length > 0) {
+      console.log('   ❌ BROKEN LOOPS:');
+      loopFailed.forEach(r => {
+        const lv = r.loopValidation;
+        const detail = lv.error || `diff: ${lv.diffPercent.toFixed(2)}%`;
+        console.log(`      - ${r.effectName}: ${detail}`);
+      });
+      console.log('');
+    }
+
+    if (loopPassed.length > 0) {
+      console.log('   ✅ PERFECT LOOPS:');
+      loopPassed.forEach(r => {
+        console.log(`      - ${r.effectName}: diff ${r.loopValidation.diffPercent.toFixed(2)}%`);
+      });
+      console.log('');
+    }
+  }
+
+  const loopFailures = options.validateLoop ? results.filter(r => r.loopValidation && !r.loopValidation.passed).length : 0;
+  const totalFailures = failed + loopFailures;
+
+  if (totalFailures > 0) {
+    console.log(`\n❌ ${failed} render failure(s), ${loopFailures} loop failure(s)!\n`);
     process.exit(1);
   } else {
     console.log(`\n✅ All ${passed} effects passed!\n`);

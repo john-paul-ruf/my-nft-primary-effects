@@ -2,7 +2,7 @@ import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
 import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
-import {findOneWayValue} from 'my-nft-gen/src/core/math/findOneWayValue.js';
+
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {FractalDendriteConfig} from './FractalDendriteConfig.js';
 
@@ -86,7 +86,8 @@ export class FractalDendriteEffect extends LayerEffect {
 
     async #drawBranch(canvas, branch, centerPos, currentFrame, numberOfFrames) {
         const growthProgress = findValue(0, 1, this.data.growthOscillation, numberOfFrames, currentFrame);
-        const rotationAngle = findOneWayValue(0, this.data.speed * 360, 1, numberOfFrames, currentFrame, false);
+        const rotProgress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const rotationAngle = rotProgress * this.data.speed * 360;
 
         const depthNormalized = branch.depth / this.data.maxDepth;
         const visibleLength = branch.length * (1 - depthNormalized * (1 - growthProgress));
@@ -127,7 +128,8 @@ export class FractalDendriteEffect extends LayerEffect {
         const angleStep = 360 / (rootBranches.length || 1);
 
         for (let r = 0; r < rootBranches.length; r++) {
-            const rotationAngle = findOneWayValue(0, this.data.speed * 360, 1, numberOfFrames, currentFrame, false);
+            const rotProgress = (currentFrame % numberOfFrames) / numberOfFrames;
+            const rotationAngle = rotProgress * this.data.speed * 360;
             const baseAngle = r * angleStep + rotationAngle;
             const growthProgress = findValue(0, 1, this.data.growthOscillation, numberOfFrames, currentFrame);
 

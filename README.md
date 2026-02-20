@@ -364,12 +364,12 @@ Use the template at `templates/PrimaryEffectTemplate.js` as a starting point:
 2. Rename and implement `YourEffectEffect.js` and `YourEffectConfig.js`
 3. Export from `src/effects/primaryEffects/index.js`
 4. Add presets to `src/effects/presets.js`
-5. Register in `plugin.js`
+5. Register in `my-nft-primary-effects-plugins.js`
 
 ## Project Structure
 
 ```
-├── plugin.js                  # Plugin entry point (registers all effects)
+├── my-nft-primary-effects-plugins.js                  # Plugin entry point (registers all effects)
 ├── src/
 │   ├── index.js               # Public exports
 │   └── effects/

@@ -102,7 +102,7 @@ export async function register(EffectRegistry, PositionRegistry) {
             }
 
             EffectRegistry.registerGlobal(Effect, EffectCategories.PRIMARY, {
-                displayName: Effect._displayName_,
+                displayName: Effect._name_,
                 description: Effect._description_,
                 version: Effect._version_,
                 author: Effect._author_,

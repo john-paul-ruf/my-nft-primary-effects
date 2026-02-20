@@ -130,7 +130,7 @@ export class NeuralMeshEffect extends LayerEffect {
 
         for (const neuron of this.data.neurons) {
             const pos = this.#getNeuronPos(neuron, centerPos, currentFrame, numberOfFrames);
-            const neuronPulse = 0.8 + 0.4 * Math.sin(neuron.pulsePhase + (currentFrame / numberOfFrames) * Math.PI * 2 * this.data.pulseFrequency);
+            const neuronPulse = 0.8 + 0.4 * Math.sin(neuron.pulsePhase + ((currentFrame % numberOfFrames) / numberOfFrames) * Math.PI * 2 * this.data.pulseFrequency);
             const r = neuron.radius * neuronPulse * pulse;
             const ringWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
 

@@ -2,7 +2,7 @@ import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
 import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
-import {findOneWayValue} from 'my-nft-gen/src/core/math/findOneWayValue.js';
+
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {ChladniPlateConfig} from './ChladniPlateConfig.js';
 
@@ -74,12 +74,13 @@ export class ChladniPlateEffect extends LayerEffect {
     }
 
     #chladniValue(nx, ny, currentFrame, numberOfFrames) {
-        const morph = findOneWayValue(0, Math.PI * 2 * this.data.morphSpeed, 1, numberOfFrames, currentFrame, false);
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const morph = progress * Math.PI * 2 * this.data.morphSpeed;
         let value = 0;
 
         for (const mode of this.data.modes) {
             const mShifted = mode.m + 0.5 * Math.sin(morph + mode.phaseOffset);
-            const nShifted = mode.n + 0.5 * Math.cos(morph * 0.7 + mode.phaseOffset);
+            const nShifted = mode.n + 0.5 * Math.cos(morph + mode.phaseOffset);
             value += mode.weight * (
                 Math.cos(mShifted * Math.PI * nx) * Math.cos(nShifted * Math.PI * ny)
                 - Math.cos(nShifted * Math.PI * nx) * Math.cos(mShifted * Math.PI * ny)

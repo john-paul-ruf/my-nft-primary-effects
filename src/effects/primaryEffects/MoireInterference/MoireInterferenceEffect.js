@@ -2,7 +2,7 @@ import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
 import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
-import {findOneWayValue} from 'my-nft-gen/src/core/math/findOneWayValue.js';
+
 import {findPointByAngleAndCircle} from 'my-nft-gen/src/core/math/drawingMath.js';
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {MoireInterferenceConfig} from './MoireInterferenceConfig.js';
@@ -85,7 +85,8 @@ export class MoireInterferenceEffect extends LayerEffect {
     }
 
     async #drawGrid(canvas, grid, centerPos, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
-        const rotOffset = findOneWayValue(0, this.data.speed * this.data.rotationRange * grid.rotationDirection, 1, numberOfFrames, currentFrame, false);
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const rotOffset = progress * this.data.speed * this.data.rotationRange * grid.rotationDirection;
         const angle = grid.baseAngle + rotOffset;
         const angleRad = angle * Math.PI / 180;
 

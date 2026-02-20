@@ -2,7 +2,7 @@ import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
 import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
-import {findOneWayValue} from 'my-nft-gen/src/core/math/findOneWayValue.js';
+
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {GlyphMatrixConfig} from './GlyphMatrixConfig.js';
 
@@ -60,7 +60,7 @@ export class GlyphMatrixEffect extends LayerEffect {
             columns.push({
                 glyphs,
                 cascadeOffset: randomNumber(0, 1),
-                cascadeSpeedFactor: 0.7 + randomNumber(0, 0.6),
+                cascadeSpeedFactor: getRandomIntInclusive(1, 3),
             });
         }
 
@@ -99,7 +99,8 @@ export class GlyphMatrixEffect extends LayerEffect {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
         const lineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
 
-        const cascadeProgress = findOneWayValue(0, this.data.cascadeSpeed, 1, numberOfFrames, currentFrame, false);
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const cascadeProgress = progress * this.data.cascadeSpeed;
         const startX = centerPos.x - this.data.fieldWidth / 2;
         const startY = centerPos.y - this.data.fieldHeight / 2;
         const colSpacing = this.data.fieldWidth / this.data.columnCount;

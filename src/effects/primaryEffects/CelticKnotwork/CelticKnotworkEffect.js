@@ -2,7 +2,7 @@ import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
 import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
-import {findOneWayValue} from 'my-nft-gen/src/core/math/findOneWayValue.js';
+
 import {findPointByAngleAndCircle} from 'my-nft-gen/src/core/math/drawingMath.js';
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {CelticKnotworkConfig} from './CelticKnotworkConfig.js';
@@ -113,7 +113,8 @@ export class CelticKnotworkEffect extends LayerEffect {
     async #drawKnotLayer(canvas, centerPos, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
         const lineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
-        const rotAngle = findOneWayValue(0, this.data.speed * 360, 1, numberOfFrames, currentFrame, false);
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const rotAngle = progress * this.data.speed * 360;
         const pulse = findValue(0.95, 1.05, this.data.pulseFrequency, numberOfFrames, currentFrame);
 
         for (const band of this.data.bands) {

@@ -2,7 +2,7 @@ import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
 import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
-import {findOneWayValue} from 'my-nft-gen/src/core/math/findOneWayValue.js';
+
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {WaveCollapseConfig} from './WaveCollapseConfig.js';
 
@@ -122,7 +122,8 @@ export class WaveCollapseEffect extends LayerEffect {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
         const lineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
 
-        const collapseProgress = findOneWayValue(0, this.data.collapseSpeed, 1, numberOfFrames, currentFrame, false) % 1;
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const collapseProgress = (progress * this.data.collapseSpeed) % 1;
         const wavePulse = findValue(0.97, 1.03, this.data.waveFrequency, numberOfFrames, currentFrame);
 
         const cellSize = (this.data.gridSize * wavePulse) / this.data.cellCount;

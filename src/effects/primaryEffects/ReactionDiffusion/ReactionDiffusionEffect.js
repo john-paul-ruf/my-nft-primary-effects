@@ -2,7 +2,7 @@ import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
 import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
-import {findOneWayValue} from 'my-nft-gen/src/core/math/findOneWayValue.js';
+
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {ReactionDiffusionConfig} from './ReactionDiffusionConfig.js';
 
@@ -88,7 +88,8 @@ export class ReactionDiffusionEffect extends LayerEffect {
     }
 
     #computeField(centerPos, currentFrame, numberOfFrames) {
-        const timePhase = findOneWayValue(0, Math.PI * 2 * this.data.speed, 1, numberOfFrames, currentFrame, false);
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const timePhase = progress * Math.PI * 2 * this.data.speed;
         const res = this.data.gridResolution;
         const field = [];
 
@@ -108,7 +109,7 @@ export class ReactionDiffusionEffect extends LayerEffect {
 
                 for (const h of this.data.harmonics) {
                     value += h.weight * Math.sin(nx * h.freqX * Math.PI + h.phaseX + timePhase)
-                        * Math.cos(ny * h.freqY * Math.PI + h.phaseY + timePhase * 0.7);
+                        * Math.cos(ny * h.freqY * Math.PI + h.phaseY + timePhase);
                 }
 
                 row.push(value);

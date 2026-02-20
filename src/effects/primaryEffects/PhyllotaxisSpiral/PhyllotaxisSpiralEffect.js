@@ -2,7 +2,7 @@ import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
 import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
-import {findOneWayValue} from 'my-nft-gen/src/core/math/findOneWayValue.js';
+
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {PhyllotaxisSpiralConfig} from './PhyllotaxisSpiralConfig.js';
 
@@ -81,7 +81,8 @@ export class PhyllotaxisSpiralEffect extends LayerEffect {
 
     async #drawSpiralLayer(canvas, centerPos, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
-        const rotOffset = findOneWayValue(0, this.data.speed * 360, 1, numberOfFrames, currentFrame, false);
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const rotOffset = progress * this.data.speed * 360;
         const breathe = findValue(
             1 - this.data.breathAmplitude,
             1 + this.data.breathAmplitude,

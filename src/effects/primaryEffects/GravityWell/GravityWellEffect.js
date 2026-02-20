@@ -2,7 +2,7 @@ import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
 import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
-import {findOneWayValue} from 'my-nft-gen/src/core/math/findOneWayValue.js';
+
 import {findPointByAngleAndCircle} from 'my-nft-gen/src/core/math/drawingMath.js';
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {GravityWellConfig} from './GravityWellConfig.js';
@@ -41,7 +41,7 @@ export class GravityWellEffect extends LayerEffect {
                 angle: (360 / wellCount) * i + randomNumber(-20, 20),
                 orbitRadius: randomNumber(this.config.wellOrbitRadius.lower, this.config.wellOrbitRadius.upper),
                 strength: randomNumber(this.config.wellStrength.lower, this.config.wellStrength.upper),
-                orbitSpeed: randomNumber(0.5, 1.5),
+                orbitSpeed: getRandomIntInclusive(1, 3),
                 phaseOffset: randomNumber(0, 360),
             });
         }
@@ -76,7 +76,8 @@ export class GravityWellEffect extends LayerEffect {
     }
 
     #getWellPositions(centerPos, currentFrame, numberOfFrames) {
-        const rotOffset = findOneWayValue(0, this.data.speed * 360, 1, numberOfFrames, currentFrame, false);
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const rotOffset = progress * this.data.speed * 360;
         const pulse = findValue(0.9, 1.1, this.data.pulseFrequency, numberOfFrames, currentFrame);
 
         return this.data.wells.map(well => {

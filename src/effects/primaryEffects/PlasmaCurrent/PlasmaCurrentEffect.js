@@ -2,7 +2,7 @@ import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
 import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
-import {findOneWayValue} from 'my-nft-gen/src/core/math/findOneWayValue.js';
+
 import {findPointByAngleAndCircle} from 'my-nft-gen/src/core/math/drawingMath.js';
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {PlasmaCurrentConfig} from './PlasmaCurrentConfig.js';
@@ -115,7 +115,8 @@ export class PlasmaCurrentEffect extends LayerEffect {
     }
 
     #computeArcPath(arc, centerPos, currentFrame, numberOfFrames) {
-        const rotAngle = findOneWayValue(0, this.data.speed * 360, 1, numberOfFrames, currentFrame, false);
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const rotAngle = progress * this.data.speed * 360;
         const pulse = findValue(0.7, 1.3, this.data.pulseFrequency, numberOfFrames, currentFrame);
 
         const startPos = findPointByAngleAndCircle(centerPos, arc.startAngle + rotAngle, arc.radius * pulse);
@@ -129,8 +130,8 @@ export class PlasmaCurrentEffect extends LayerEffect {
 
             if (s > 0 && s < arc.segments && arc.jags[s]) {
                 const jag = arc.jags[s];
-                const wobbleX = jag.offsetX * Math.sin(jag.phaseX + currentFrame * 0.1 * this.data.speed);
-                const wobbleY = jag.offsetY * Math.cos(jag.phaseY + currentFrame * 0.1 * this.data.speed);
+                const wobbleX = jag.offsetX * Math.sin(jag.phaseX + progress * Math.PI * 2 * this.data.speed);
+                const wobbleY = jag.offsetY * Math.cos(jag.phaseY + progress * Math.PI * 2 * this.data.speed);
                 points.push({x: baseX + wobbleX * pulse, y: baseY + wobbleY * pulse});
             } else {
                 points.push({x: baseX, y: baseY});
@@ -166,14 +167,15 @@ export class PlasmaCurrentEffect extends LayerEffect {
 
             const forkPoints = [];
             const pulse = findValue(0.7, 1.3, this.data.pulseFrequency, numberOfFrames, currentFrame);
+            const forkProgress = (currentFrame % numberOfFrames) / numberOfFrames;
             for (let s = 0; s <= fork.segments; s++) {
                 const t = s / fork.segments;
                 const bx = branchStart.x + (forkEnd.x - branchStart.x) * t;
                 const by = branchStart.y + (forkEnd.y - branchStart.y) * t;
                 if (s > 0 && s < fork.segments && fork.jags[s]) {
                     const jag = fork.jags[s];
-                    const wx = jag.offsetX * Math.sin(jag.phaseX + currentFrame * 0.1 * this.data.speed);
-                    const wy = jag.offsetY * Math.cos(jag.phaseY + currentFrame * 0.1 * this.data.speed);
+                    const wx = jag.offsetX * Math.sin(jag.phaseX + forkProgress * Math.PI * 2 * this.data.speed);
+                    const wy = jag.offsetY * Math.cos(jag.phaseY + forkProgress * Math.PI * 2 * this.data.speed);
                     forkPoints.push({x: bx + wx * pulse, y: by + wy * pulse});
                 } else {
                     forkPoints.push({x: bx, y: by});
