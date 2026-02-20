@@ -1,14 +1,15 @@
 {
-  "name": "my-nft-mystic-effects-plugin-pack",
+  "name": "my-nft-primary-effect-pack",
   "version": "1.0.0",
-  "description": "A plugin pack for creating custom visual effects for NFT generation with my-nft-effects-core",
+  "description": "A plugin pack for creating custom visual effects for NFT generation with my-nft-gen and nft-studio",
   "type": "module",
   "main": "plugin.js",
   "exports": {
     ".": "./plugin.js"
   },
   "scripts": {
-    "render": "node scripts/testRender.js --help"
+    "render": "node scripts/testRender.js --help",
+    "test-all-random-preset": "node scripts/testRender.js --all --preset random --frames 450 --width 1920 --height 1080 --save-frames --verbose"
   },
   "dependencies": {
     "my-nft-gen": "1.6.9"
@@ -36,7 +37,7 @@
       ]
     ]
   },
-  "author": "Your Name",
+  "author": "John Ruf",
   "license": "MIT",
   "keywords": [
     "nft-generation",

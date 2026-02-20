@@ -1,48 +1,25 @@
 #!/usr/bin/env node
 
-/**
- * Unified NFT Effect Test Runner
- * 
- * A single, focused test script that:
- * 1. Creates a real NFT Project object with proper layer management
- * 2. Renders all frames using Project.generateRandomLoop()
- * 3. Automatically handles worker thread plugin registration
- * 4. Saves frames and provides comprehensive reporting
- * 
- * This script consolidates renderTestLoop.js, renderTestLoopDirect.js, and runWithPlugins.js
- * into a single, unified tool focused on one thing: rendering effects through a real project.
- * 
- * Usage:
- *   node scripts/testRender.js --effect tree-of-life
- *   node scripts/testRender.js --effect tree-of-life --frames 100
- *   node scripts/testRender.js --effect tree-of-life --preset mystical -v
- *   node scripts/testRender.js --effect tree-of-life --width 2048 --height 2048 --save-frames
- */
-
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import os from 'os';
 import { Settings, Project } from 'my-nft-gen';
 import { LayerConfig } from 'my-nft-gen/src/core/layer/LayerConfig.js';
-import { ColorPicker } from 'my-nft-gen/src/core/layer/configType/ColorPicker.js';
 import { ColorScheme } from 'my-nft-gen/src/core/color/ColorScheme.js';
+import { ALL_PRESETS } from '../src/effects/presets.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
-
-// ============================================================================
-// COMMAND LINE PARSING
-// ============================================================================
 
 function parseArgs() {
   const args = process.argv.slice(2);
   const options = {
     effect: null,
-    preset: 'default',
+    preset: null,
+    all: false,
     frames: 100,
-    width: 1024,
-    height: 1024,
+    width: 1080,
+    height: 1920,
     output: null,
     saveFrames: false,
     verbose: false,
@@ -54,6 +31,7 @@ function parseArgs() {
     const arg = args[i];
     if (arg === '--effect') options.effect = args[++i];
     else if (arg === '--preset') options.preset = args[++i];
+    else if (arg === '--all') options.all = true;
     else if (arg === '--frames') options.frames = parseInt(args[++i], 10);
     else if (arg === '--width') options.width = parseInt(args[++i], 10);
     else if (arg === '--height') options.height = parseInt(args[++i], 10);
@@ -71,20 +49,23 @@ function printHelp() {
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║          NFT Mystic Effects - Unified Test Renderer           ║
-║     One Script. One Job. Render Effects Through A Project     ║
 ╚═══════════════════════════════════════════════════════════════╝
 
 USAGE:
+  node scripts/testRender.js --all [options]
   node scripts/testRender.js --effect <name> [options]
 
-REQUIRED:
-  --effect <name>              Effect name to test (e.g., tree-of-life)
+REQUIRED (one of):
+  --all                        Test ALL registered effects
+  --effect <name>              Test a single effect (e.g., fractal-dendrite)
 
 OPTIONS:
-  --preset <name>              Effect preset: default|mystical|minimal|dense|organic (default: default)
+  --preset <name>              Use a specific preset (e.g., sparse-sapling). Requires --effect.
+                               Use --preset random to pick a random preset.
+                               Use --preset list to show available presets for the effect.
   --frames <count>             Frames to render (default: 100)
-  --width <px>                 Canvas width (default: 1024)
-  --height <px>                Canvas height (default: 1024)
+  --width <px>                 Canvas width (default: 1080)
+  --height <px>                Canvas height (default: 1920)
   --output <path>              Output directory for frames
   --save-frames                Save rendered frames to disk
   --verbose, -v                Verbose output
@@ -92,181 +73,182 @@ OPTIONS:
   --help, -h                   Show this help message
 
 EXAMPLES:
-  # Basic test with default settings
-  node scripts/testRender.js --effect tree-of-life
+  # Test all effects
+  node scripts/testRender.js --all
 
-  # High quality render with custom dimensions
-  node scripts/testRender.js --effect tree-of-life --frames 100 --width 2048 --height 2048
+  # Test all effects with fewer frames (faster)
+  node scripts/testRender.js --all --frames 10
 
-  # Mystical preset with verbose output
-  node scripts/testRender.js --effect tree-of-life --preset mystical -v
+  # Test a single effect
+  node scripts/testRender.js --effect fractal-dendrite
 
-  # Save frames to custom output directory
-  node scripts/testRender.js --effect tree-of-life --save-frames --output ./my-renders
+  # Test with a specific preset
+  node scripts/testRender.js --effect fractal-dendrite --preset sparse-sapling
 
-PRESETS:
-  - default   Baseline rendering with standard settings
-  - mystical  Enhanced with sacred geometry and energy flow
-  - minimal   Fast renders with reduced complexity
-  - dense     High complexity with rich detail
-  - organic   Natural appearance with asymmetry
+  # Test with a random preset
+  node scripts/testRender.js --effect fractal-dendrite --preset random
+
+  # List available presets for an effect
+  node scripts/testRender.js --effect fractal-dendrite --preset list
+
+  # Test all effects with random presets
+  node scripts/testRender.js --all --preset random
+
+  # Save frames to disk
+  node scripts/testRender.js --effect fractal-dendrite --save-frames --output ./my-renders
   `);
 }
 
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-
-function normalizeEffectName(name) {
-  return name
-    .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join('') + 'Effect';
-}
-
-function getEffectClass(registry, effectName, normalizedName) {
-  // Try registry methods
-  if (registry.getGlobal && typeof registry.getGlobal === 'function') {
-    const all = registry.getGlobal();
-    if (Array.isArray(all)) {
-      const found = all.find(e =>
-        e && (e.name === effectName || e._name_ === effectName ||
-              e.name === normalizedName || e._name_ === normalizedName)
-      );
-      if (found) return found;
-    }
-  }
-
-  // Try getAllGlobal
-  if (registry.getAllGlobal && typeof registry.getAllGlobal === 'function') {
-    const all = registry.getAllGlobal();
-    if (Array.isArray(all)) {
-      const found = all.find(e =>
-        e && (e.name === effectName || e._name_ === effectName ||
-              e.name === normalizedName || e._name_ === normalizedName)
-      );
-      if (found) return found;
-    }
-  }
-
-  return null;
-}
-
-function getPresetOptions(presetName) {
-  // Base size/position config for all presets (80% of canvas, centered)
-  const baseSizeConfig = {
-    sizeMode: 'full',
-    sizePercentage: 0.8,
-    positionMode: 'center',
-    positionX: 0,
-    positionY: 0,
-  };
-
-  const presets = {
-    default: {
-      ...baseSizeConfig,
-      branchCount: 8,
-      recursionDepth: 6,
-      branchAngleVariance: 0.3,
-      branchTaperFactor: 0.75,
-      initialBranchLength: 40,
-      minBranchLength: 5,
-      attractionRadius: 80,
-      killDistance: 120,
-      useGradient: true,
-      showSephirothNodes: true,
-      energyFlow: false,
-      glowIntensity: 0.4,
-      glowRadius: 8,
-    },
-    mystical: {
-      ...baseSizeConfig,
-      branchCount: 10,
-      recursionDepth: 7,
-      branchAngleVariance: 0.25,
-      branchTaperFactor: 0.72,
-      initialBranchLength: 50,
-      minBranchLength: 3,
-      attractionRadius: 100,
-      killDistance: 140,
-      useGradient: true,
-      showSephirothNodes: true,
-      energyFlow: true,
-      glowIntensity: 0.6,
-      glowRadius: 12,
-    },
-    minimal: {
-      ...baseSizeConfig,
-      branchCount: 4,
-      recursionDepth: 4,
-      branchAngleVariance: 0.4,
-      branchTaperFactor: 0.7,
-      initialBranchLength: 30,
-      minBranchLength: 10,
-      attractionRadius: 60,
-      killDistance: 100,
-      useGradient: false,
-      showSephirothNodes: false,
-      energyFlow: false,
-      glowIntensity: 0.2,
-      glowRadius: 4,
-    },
-    dense: {
-      ...baseSizeConfig,
-      branchCount: 12,
-      recursionDepth: 8,
-      branchAngleVariance: 0.2,
-      branchTaperFactor: 0.75,
-      initialBranchLength: 45,
-      minBranchLength: 2,
-      attractionRadius: 120,
-      killDistance: 160,
-      useGradient: true,
-      showSephirothNodes: true,
-      energyFlow: true,
-      glowIntensity: 0.8,
-      glowRadius: 15,
-    },
-    organic: {
-      ...baseSizeConfig,
-      branchCount: 9,
-      recursionDepth: 6,
-      branchAngleVariance: 0.5,
-      branchTaperFactor: 0.68,
-      initialBranchLength: 42,
-      minBranchLength: 4,
-      attractionRadius: 90,
-      killDistance: 130,
-      useGradient: true,
-      showSephirothNodes: false,
-      energyFlow: false,
-      glowIntensity: 0.35,
-      glowRadius: 7,
-    }
-  };
-
-  return presets[presetName] || presets.default;
-}
-
-function setupOutputDirectory(options) {
-  if (!options.saveFrames && !options.output) return null;
-
-  const outputDir = options.output || path.join(projectRoot, 'output', `render-${Date.now()}`);
-
+function setupOutputDirectory(dirPath) {
   try {
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
     }
-    return outputDir;
+    return dirPath;
   } catch (e) {
     console.warn(`⚠️  Could not create output directory: ${e.message}`);
     return null;
   }
 }
 
-// ============================================================================
-// MAIN TEST RUNNER
-// ============================================================================
+async function loadRegistries(options) {
+  if (options.debug) console.log('🔍 Loading registries...');
+
+  let EffectRegistry, PositionRegistry;
+  try {
+    const imported = await import('my-nft-gen');
+    EffectRegistry = imported.EffectRegistry;
+    PositionRegistry = imported.PositionRegistry;
+  } catch (e) {
+    console.error('❌ Error: Cannot load my-nft-gen registries');
+    console.error('   ' + e.message);
+    process.exit(1);
+  }
+
+  try {
+    const { registerCoreEffects } = await import('my-nft-gen/src/core/registry/CoreEffectsRegistration.js');
+    await registerCoreEffects();
+  } catch (e) {
+    if (options.debug) console.log('⚠️  Core effects registration skipped');
+  }
+
+  try {
+    const pluginModule = await import(path.join(projectRoot, 'plugin.js'));
+    await pluginModule.register(EffectRegistry, PositionRegistry);
+  } catch (e) {
+    console.error('❌ Error: Cannot register plugin effects');
+    console.error('   ' + e.message);
+    process.exit(1);
+  }
+
+  return { EffectRegistry, PositionRegistry };
+}
+
+function getAllEffects() {
+  return [
+    { dir: 'FractalDendrite', effectFile: 'FractalDendriteEffect.js', configFile: 'FractalDendriteConfig.js', effectClass: 'FractalDendriteEffect', configClass: 'FractalDendriteConfig' },
+    { dir: 'PlasmaCurrent', effectFile: 'PlasmaCurrentEffect.js', configFile: 'PlasmaCurrentConfig.js', effectClass: 'PlasmaCurrentEffect', configClass: 'PlasmaCurrentConfig' },
+    { dir: 'SacredMandala', effectFile: 'SacredMandalaEffect.js', configFile: 'SacredMandalaConfig.js', effectClass: 'SacredMandalaEffect', configClass: 'SacredMandalaConfig' },
+    { dir: 'VoronoiShatter', effectFile: 'VoronoiShatterEffect.js', configFile: 'VoronoiShatterConfig.js', effectClass: 'VoronoiShatterEffect', configClass: 'VoronoiShatterConfig' },
+    { dir: 'MoireInterference', effectFile: 'MoireInterferenceEffect.js', configFile: 'MoireInterferenceConfig.js', effectClass: 'MoireInterferenceEffect', configClass: 'MoireInterferenceConfig' },
+    { dir: 'ReactionDiffusion', effectFile: 'ReactionDiffusionEffect.js', configFile: 'ReactionDiffusionConfig.js', effectClass: 'ReactionDiffusionEffect', configClass: 'ReactionDiffusionConfig' },
+    { dir: 'ToroidalFlow', effectFile: 'ToroidalFlowEffect.js', configFile: 'ToroidalFlowConfig.js', effectClass: 'ToroidalFlowEffect', configClass: 'ToroidalFlowConfig' },
+    { dir: 'GlyphMatrix', effectFile: 'GlyphMatrixEffect.js', configFile: 'GlyphMatrixConfig.js', effectClass: 'GlyphMatrixEffect', configClass: 'GlyphMatrixConfig' },
+    { dir: 'PenroseTiling', effectFile: 'PenroseTilingEffect.js', configFile: 'PenroseTilingConfig.js', effectClass: 'PenroseTilingEffect', configClass: 'PenroseTilingConfig' },
+    { dir: 'GravityWell', effectFile: 'GravityWellEffect.js', configFile: 'GravityWellConfig.js', effectClass: 'GravityWellEffect', configClass: 'GravityWellConfig' },
+    { dir: 'StainedGlass', effectFile: 'StainedGlassEffect.js', configFile: 'StainedGlassConfig.js', effectClass: 'StainedGlassEffect', configClass: 'StainedGlassConfig' },
+    { dir: 'NeuralMesh', effectFile: 'NeuralMeshEffect.js', configFile: 'NeuralMeshConfig.js', effectClass: 'NeuralMeshEffect', configClass: 'NeuralMeshConfig' },
+    { dir: 'ChladniPlate', effectFile: 'ChladniPlateEffect.js', configFile: 'ChladniPlateConfig.js', effectClass: 'ChladniPlateEffect', configClass: 'ChladniPlateConfig' },
+    { dir: 'PhyllotaxisSpiral', effectFile: 'PhyllotaxisSpiralEffect.js', configFile: 'PhyllotaxisSpiralConfig.js', effectClass: 'PhyllotaxisSpiralEffect', configClass: 'PhyllotaxisSpiralConfig' },
+    { dir: 'TopographicContour', effectFile: 'TopographicContourEffect.js', configFile: 'TopographicContourConfig.js', effectClass: 'TopographicContourEffect', configClass: 'TopographicContourConfig' },
+    { dir: 'RadiolariaSkeleton', effectFile: 'RadiolariaSkeletonEffect.js', configFile: 'RadiolariaSkeletonConfig.js', effectClass: 'RadiolariaSkeletonEffect', configClass: 'RadiolariaSkeletonConfig' },
+    { dir: 'CelticKnotwork', effectFile: 'CelticKnotworkEffect.js', configFile: 'CelticKnotworkConfig.js', effectClass: 'CelticKnotworkEffect', configClass: 'CelticKnotworkConfig' },
+    { dir: 'LissajousCage', effectFile: 'LissajousCageEffect.js', configFile: 'LissajousCageConfig.js', effectClass: 'LissajousCageEffect', configClass: 'LissajousCageConfig' },
+    { dir: 'WaveCollapse', effectFile: 'WaveCollapseEffect.js', configFile: 'WaveCollapseConfig.js', effectClass: 'WaveCollapseEffect', configClass: 'WaveCollapseConfig' },
+    { dir: 'SonicRosette', effectFile: 'SonicRosetteEffect.js', configFile: 'SonicRosetteConfig.js', effectClass: 'SonicRosetteEffect', configClass: 'SonicRosetteConfig' },
+  ];
+}
+
+async function renderEffect({ EffectRegistry, effectEntry, options }) {
+  const effectsBase = path.join(projectRoot, 'src', 'effects', 'primaryEffects');
+  const effectModule = await import(path.join(effectsBase, effectEntry.dir, effectEntry.effectFile));
+  const configModule = await import(path.join(effectsBase, effectEntry.dir, effectEntry.configFile));
+
+  const EffectClass = effectModule[effectEntry.effectClass];
+  const ConfigClass = configModule[effectEntry.configClass];
+  const effectName = EffectClass._name_;
+
+  const kebab = effectEntry.dir.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+  let presetUsed = null;
+  let configOverrides = {};
+
+  if (options.preset) {
+    const presets = ALL_PRESETS[kebab];
+    if (presets && presets.length > 0) {
+      let chosen;
+      if (options.preset === 'random') {
+        chosen = presets[Math.floor(Math.random() * presets.length)];
+      } else {
+        chosen = presets.find(p => p.name === options.preset);
+        if (!chosen) {
+          console.log(`\n⚠️  Preset '${options.preset}' not found for ${kebab}. Using random preset.`);
+          chosen = presets[Math.floor(Math.random() * presets.length)];
+        }
+      }
+      presetUsed = chosen.name;
+      configOverrides = chosen.currentEffectConfig || {};
+    }
+  }
+
+  const effectConfig = new ConfigClass(configOverrides);
+
+  const outputDir = options.saveFrames
+    ? setupOutputDirectory(options.output || path.join(projectRoot, 'output', `render-${effectName}-${Date.now()}`))
+    : path.join(projectRoot, 'output');
+
+  if (outputDir && !fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const nftProject = new Project({
+    artist: 'test-runner',
+    projectName: `test-${effectName}`,
+    colorScheme: new ColorScheme({
+      colorBucket: ['#FFFF00', '#FF00FF', '#00FFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFFFF', '#FFA500'],
+    }),
+    neutrals: ['#FFFFFF'],
+    backgrounds: ['#000000'],
+    lights: ['#FFFF00', '#FF00FF', '#00FFFF', '#FF0000', '#00FF00', '#0000FF'],
+    numberOfFrame: options.frames,
+    longestSideInPixels: options.width,
+    shortestSideInPixels: options.height,
+    isHorizontal: false,
+    projectDirectory: outputDir,
+    renderJumpFrames: 1,
+    frameStart: 0,
+    pluginPaths: [projectRoot]
+  });
+
+  const layerConfig = new LayerConfig({
+    effect: EffectClass,
+    currentEffectConfig: effectConfig,
+    percentChance: 100,
+    secondaryEffects: []
+  });
+
+  nftProject.addPrimaryEffect({ layerConfig });
+
+  const startTime = performance.now();
+  const result = await nftProject.generateRandomLoop(options.saveFrames);
+  const endTime = performance.now();
+
+  const totalDuration = endTime - startTime;
+  const successCount = result?.framesGenerated || options.frames;
+  const errorCount = result?.framesFailed || 0;
+  const failedFrames = result?.failedFrames || [];
+
+  return { effectName, presetUsed, totalDuration, successCount, errorCount, failedFrames };
+}
 
 async function runTest() {
   const options = parseArgs();
@@ -276,209 +258,140 @@ async function runTest() {
     process.exit(0);
   }
 
-  if (!options.effect) {
-    console.error('❌ Error: --effect is required');
+  if (!options.effect && !options.all) {
+    console.error('❌ Error: --effect <name> or --all is required');
     console.log('\nRun with --help for usage instructions\n');
     process.exit(1);
   }
 
-  // Setup environment for worker thread plugin registration
   process.env.NFT_PROJECT_ROOT = projectRoot;
   process.env.NFT_WORKER_INITIALIZE_PLUGINS = 'true';
   if (options.debug) {
     process.env.DEBUG_PRELOAD = 'true';
   }
 
-  const outputDir = setupOutputDirectory(options);
-
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║          NFT Mystic Effects - Unified Test Renderer           ║
 ╚═══════════════════════════════════════════════════════════════╝
-
-🎨 CONFIGURATION:
-   Effect:      ${options.effect}
-   Preset:      ${options.preset}
-   Frames:      ${options.frames}
-   Resolution:  ${options.width}x${options.height}
-   Save Frames: ${options.saveFrames ? 'Yes' : 'No'}
-   ${outputDir ? `Output:      ${outputDir}` : ''}
   `);
 
-  try {
-    // Step 1: Load registries
-    if (options.debug) console.log('🔍 Loading registries...');
-    console.log('🔄 Loading my-nft-gen registries...');
-    
-    let EffectRegistry, PositionRegistry;
-    try {
-      const imported = await import('my-nft-gen');
-      EffectRegistry = imported.EffectRegistry;
-      PositionRegistry = imported.PositionRegistry;
-      console.log('✅ Registries loaded');
-    } catch (e) {
-      console.error('❌ Error: Cannot load my-nft-gen registries');
-      console.error('   ' + e.message);
-      process.exit(1);
-    }
+  const { EffectRegistry } = await loadRegistries(options);
+  console.log('✅ Registries loaded and plugin effects registered\n');
 
-    // Step 2: Register core effects
-    if (options.debug) console.log('🔍 Registering core effects...');
-    try {
-      const { registerCoreEffects } = await import('my-nft-gen/src/core/registry/CoreEffectsRegistration.js');
-      await registerCoreEffects();
-      console.log('✅ Core effects registered');
-    } catch (e) {
-      if (options.debug) console.log('⚠️  Core effects registration skipped');
-    }
+  const allEffects = getAllEffects();
 
-    // Step 3: Register plugin effects
-    if (options.debug) console.log('🔍 Registering plugin effects...');
-    console.log('🔄 Registering plugin effects...');
-    try {
-      const pluginModule = await import(path.join(projectRoot, 'src', 'index.js'));
-      await pluginModule.register(EffectRegistry, PositionRegistry);
-      console.log('✅ Plugin effects registered');
-    } catch (e) {
-      console.error('❌ Error: Cannot register plugin effects');
-      console.error('   ' + e.message);
-      process.exit(1);
-    }
-
-    // Step 4: Load effect class
-    if (options.debug) console.log('🔍 Loading effect class...');
-    const effectName = normalizeEffectName(options.effect);
-    const effectClass = getEffectClass(EffectRegistry, options.effect, effectName);
-
-    if (!effectClass) {
-      console.error(`❌ Error: Effect '${options.effect}' not found in registry`);
-      process.exit(1);
-    }
-
-    console.log(`✅ Effect loaded: ${effectClass.name || effectName}`);
-
-    // Step 5: Load AnimatedTreeOfLifeConfig
-    let AnimatedTreeOfLifeConfig;
-    if (options.debug) console.log('🔍 Loading AnimatedTreeOfLifeConfig...');
-    try {
-      const configModule = await import(path.join(projectRoot, 'src', 'effects', 'primaryEffects', 'AnimatedTreeOfLife', 'AnimatedTreeOfLifeConfig.js'));
-      AnimatedTreeOfLifeConfig = configModule.AnimatedTreeOfLifeConfig;
-    } catch (e) {
-      if (options.debug) console.log('⚠️  AnimatedTreeOfLifeConfig load failed');
-    }
-
-    // Step 6: Create effect config with preset
-    if (options.debug) console.log('🔍 Creating effect config with preset...');
-    const presetOptions = getPresetOptions(options.preset);
-    const presetConfig = { ...presetOptions };
-
-    // Ensure ColorPicker instances
-    if (!presetConfig.rootColor) presetConfig.rootColor = new ColorPicker(ColorPicker.SelectionType.colorBucket);
-    if (!presetConfig.trunkColor) presetConfig.trunkColor = new ColorPicker(ColorPicker.SelectionType.colorBucket);
-    if (!presetConfig.branchColor) presetConfig.branchColor = new ColorPicker(ColorPicker.SelectionType.colorBucket);
-    if (!presetConfig.foliageColor) presetConfig.foliageColor = new ColorPicker(ColorPicker.SelectionType.colorBucket);
-    if (!presetConfig.accentColor) presetConfig.accentColor = new ColorPicker(ColorPicker.SelectionType.colorBucket);
-
-    const ConfigClass = effectClass._configClass_ || effectClass.config || AnimatedTreeOfLifeConfig;
-    const effectConfig = new ConfigClass(presetConfig);
-
-    console.log('✅ Effect config created');
-
-    // Step 7: Create Project with real settings
-    if (options.debug) console.log('🔍 Creating Project object...');
-    console.log('🔄 Creating Project...');
-    
-    const nftProject = new Project({
-      artist: 'test-runner',
-      projectName: 'nft-effects-test',
-      colorScheme: new ColorScheme({}),
-      neutrals: ['#FFFFFF'],
-      backgrounds: ['#000000'],
-      lights: ['#FFFF00', '#FF00FF', '#00FFFF', '#FF0000', '#00FF00', '#0000FF'],
-      numberOfFrame: options.frames,
-      longestSideInPixels: options.width,
-      shortestSideInPixels: options.height,
-      isHorizontal: false,
-      projectDirectory: outputDir || path.join(projectRoot, 'output'),
-      renderJumpFrames: 1,
-      frameStart: 0,
-      pluginPaths: [projectRoot]
+  let effectsToTest;
+  if (options.all) {
+    effectsToTest = allEffects;
+    console.log(`🎨 Testing ALL ${effectsToTest.length} effects (${options.frames} frames each)\n`);
+  } else {
+    const match = allEffects.find(e => {
+      const effectModule = e.effectClass;
+      const kebab = e.dir.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+      return kebab === options.effect || e.dir.toLowerCase() === options.effect.toLowerCase();
     });
 
-    console.log('✅ Project created');
+    if (!match) {
+      console.error(`❌ Error: Effect '${options.effect}' not found.`);
+      console.log('\nAvailable effects:');
+      allEffects.forEach(e => {
+        const kebab = e.dir.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+        console.log(`  - ${kebab}`);
+      });
+      process.exit(1);
+    }
 
-    // Step 8: Add effect to project as primary effect
-    if (options.debug) console.log('🔍 Adding effect to project...');
-    console.log('🔄 Adding effect to project...');
-    
-    const layerConfig = new LayerConfig({
-      effect: effectClass.effectClass,
-      currentEffectConfig: effectConfig,
-      percentChance: 100,
-      secondaryEffects: []
-    });
+    const matchKebab = match.dir.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
 
-    nftProject.addPrimaryEffect({ layerConfig });
-    console.log('✅ Effect added to project');
-
-    // Step 9: Render using generateRandomLoop (THE ONE CALL)
-    console.log(`\n🔄 Starting render loop (${options.frames} frames)...\n`);
-
-    const startTime = performance.now();
-    const result = await nftProject.generateRandomLoop(options.saveFrames);
-    const endTime = performance.now();
-
-    const totalDuration = endTime - startTime;
-    const successCount = result?.framesGenerated || options.frames;
-    const errorCount = result?.framesFailed || 0;
-    const failedFrames = result?.failedFrames || [];
-
-    // Step 10: Report results
-    console.log('\n');
-    console.log('╔═══════════════════════════════════════════════════════════════╗');
-    console.log('║                    Render Complete                            ║');
-    console.log('╚═══════════════════════════════════════════════════════════════╝\n');
-
-    console.log('📊 RESULTS:');
-    console.log(`   ✅ Successful frames:  ${successCount}/${options.frames}`);
-    if (errorCount > 0) {
-      console.log(`   ❌ Failed frames:      ${errorCount}/${options.frames}`);
-      if (options.verbose && failedFrames.length > 0) {
-        console.log('   Failed frame details:');
-        failedFrames.slice(0, 5).forEach(f => {
-          console.log(`      Frame ${f.frame}: ${f.error}`);
+    if (options.preset === 'list') {
+      const presets = ALL_PRESETS[matchKebab] || [];
+      if (presets.length === 0) {
+        console.log(`No presets found for ${matchKebab}`);
+      } else {
+        console.log(`Available presets for ${matchKebab}:`);
+        presets.forEach(p => {
+          console.log(`  - ${p.name}: ${p.description || p.displayName || ''}`);
         });
-        if (failedFrames.length > 5) {
-          console.log(`      ... and ${failedFrames.length - 5} more`);
+      }
+      process.exit(0);
+    }
+
+    effectsToTest = [match];
+    const presetLabel = options.preset ? ` [preset: ${options.preset}]` : '';
+    console.log(`🎨 Testing: ${options.effect}${presetLabel} (${options.frames} frames)\n`);
+  }
+
+  const results = [];
+  let passed = 0;
+  let failed = 0;
+
+  for (let i = 0; i < effectsToTest.length; i++) {
+    const entry = effectsToTest[i];
+    const kebab = entry.dir.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+    const label = `[${i + 1}/${effectsToTest.length}] ${kebab}`;
+
+    process.stdout.write(`🔄 ${label}...`);
+
+    try {
+      const result = await renderEffect({ EffectRegistry, effectEntry: entry, options });
+      results.push({ ...result, status: 'pass' });
+      passed++;
+      const presetInfo = result.presetUsed ? ` [preset: ${result.presetUsed}]` : '';
+      console.log(` ✅${presetInfo} ${result.successCount} frames in ${(result.totalDuration / 1000).toFixed(2)}s (${(result.totalDuration / result.successCount).toFixed(1)}ms/frame)`);
+
+      if (result.errorCount > 0) {
+        console.log(`   ⚠️  ${result.errorCount} frame(s) failed`);
+        if (options.verbose && result.failedFrames.length > 0) {
+          result.failedFrames.slice(0, 3).forEach(f => {
+            console.log(`      Frame ${f.frame}: ${f.error}`);
+          });
         }
       }
+    } catch (error) {
+      results.push({ effectName: kebab, status: 'fail', error: error.message });
+      failed++;
+      console.log(` ❌ FAILED: ${error.message}`);
+      if (options.verbose) {
+        console.log(`   ${error.stack?.split('\n').slice(1, 4).join('\n   ')}`);
+      }
     }
+  }
 
-    console.log(`\n   ⏱️  Total time:        ${(totalDuration / 1000).toFixed(2)}s`);
-    if (successCount > 0) {
-      console.log(`   ⚡ Avg per frame:     ${(totalDuration / successCount).toFixed(2)}ms`);
-    }
+  console.log('\n╔═══════════════════════════════════════════════════════════════╗');
+  console.log('║                    Test Results Summary                       ║');
+  console.log('╚═══════════════════════════════════════════════════════════════╝\n');
 
-    if (outputDir && options.saveFrames) {
-      console.log(`   💾 Frames saved:      ${outputDir}`);
-    }
+  const totalTime = results.reduce((sum, r) => sum + (r.totalDuration || 0), 0);
+  console.log(`📊 RESULTS: ${passed} passed, ${failed} failed, ${results.length} total`);
+  console.log(`⏱️  Total time: ${(totalTime / 1000).toFixed(2)}s\n`);
 
-    console.log('\n✅ Test completed successfully!\n');
+  if (failed > 0) {
+    console.log('❌ FAILED EFFECTS:');
+    results.filter(r => r.status === 'fail').forEach(r => {
+      console.log(`   - ${r.effectName}: ${r.error}`);
+    });
+    console.log('');
+  }
 
-    process.exit(0);
+  if (passed > 0) {
+    console.log('✅ PASSED EFFECTS:');
+    results.filter(r => r.status === 'pass').forEach(r => {
+      const pInfo = r.presetUsed ? ` [${r.presetUsed}]` : '';
+      console.log(`   - ${r.effectName}${pInfo} (${(r.totalDuration / 1000).toFixed(2)}s, ${r.successCount} frames)`);
+    });
+    console.log('');
+  }
 
-  } catch (error) {
-    console.error('\n❌ Render failed:');
-    console.error(error.message);
-    if (options.verbose) {
-      console.error('\nStack trace:');
-      console.error(error.stack);
-    }
+  if (failed > 0) {
+    console.log(`\n❌ ${failed} effect(s) failed!\n`);
     process.exit(1);
+  } else {
+    console.log(`\n✅ All ${passed} effects passed!\n`);
+    process.exit(0);
   }
 }
 
-// Run the test
 runTest().catch(err => {
   console.error('Fatal error:', err);
   process.exit(1);
