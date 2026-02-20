@@ -1,4 +1,4 @@
-# my-nft-mystic-effects-plugin-pack
+# my-nft-primary-effects
 
 A plugin pack of 20 primary visual effects for NFT generative art, built for the [my-nft-gen](https://www.npmjs.com/package/my-nft-gen) framework.
 
@@ -302,7 +302,7 @@ Register effects with the `my-nft-gen` framework:
 
 ```js
 import { EffectRegistry, PositionRegistry } from 'my-nft-gen';
-import { register } from 'my-nft-mystic-effects-plugin-pack';
+import { register } from 'my-nft-primary-effects';
 
 await register(EffectRegistry, PositionRegistry);
 ```
@@ -310,7 +310,7 @@ await register(EffectRegistry, PositionRegistry);
 ### Direct Import
 
 ```js
-import { FractalDendriteEffect, FractalDendriteConfig } from 'my-nft-mystic-effects-plugin-pack/src/index.js';
+import { FractalDendriteEffect, FractalDendriteConfig } from 'my-nft-primary-effects/src/index.js';
 
 const config = new FractalDendriteConfig({});
 const effect = new FractalDendriteEffect({ config });

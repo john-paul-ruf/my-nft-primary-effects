@@ -1,4 +1,4 @@
-export const name = 'my-nft-mystic-effects-plugin-pack';
+export const name = 'my-nft-primary-effects-plugin-pack';
 export const version = '1.0.0';
 
 export async function register(EffectRegistry, PositionRegistry) {

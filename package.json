@@ -1,5 +1,5 @@
 {
-  "name": "my-nft-primary-effect-pack",
+  "name": "my-nft-primary-effects-plugin-pack",
   "version": "1.0.0",
   "description": "A plugin pack for creating custom visual effects for NFT generation with my-nft-gen and nft-studio",
   "type": "module",

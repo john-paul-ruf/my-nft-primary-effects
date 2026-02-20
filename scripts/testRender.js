@@ -48,7 +48,7 @@ function parseArgs() {
 function printHelp() {
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
-║          NFT Mystic Effects - Unified Test Renderer           ║
+║          NFT Primary Effects - Unified Test Renderer           ║
 ╚═══════════════════════════════════════════════════════════════╝
 
 USAGE:
@@ -272,7 +272,7 @@ async function runTest() {
 
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
-║          NFT Mystic Effects - Unified Test Renderer           ║
+║          NFT Primary Effects - Unified Test Renderer          ║
 ╚═══════════════════════════════════════════════════════════════╝
   `);
 
