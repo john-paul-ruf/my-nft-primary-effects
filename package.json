@@ -1,0 +1,48 @@
+{
+  "name": "my-nft-mystic-effects-plugin-pack",
+  "version": "1.0.0",
+  "description": "A plugin pack for creating custom visual effects for NFT generation with my-nft-effects-core",
+  "type": "module",
+  "main": "plugin.js",
+  "exports": {
+    ".": "./plugin.js"
+  },
+  "scripts": {
+    "render": "node scripts/testRender.js --help"
+  },
+  "dependencies": {
+    "my-nft-gen": "1.6.9"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.23.0",
+    "babel-jest": "^29.0.0",
+    "jest": "^29.0.0"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    },
+    "collectCoverage": true
+  },
+  "babel": {
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "targets": {
+            "node": "18"
+          }
+        }
+      ]
+    ]
+  },
+  "author": "Your Name",
+  "license": "MIT",
+  "keywords": [
+    "nft-generation",
+    "visual-effects",
+    "plugin-pack",
+    "generative-art",
+    "graphics-processing"
+  ]
+}
