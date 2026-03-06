@@ -24,6 +24,9 @@ export class PlasmaCurrentConfig extends EffectConfig {
                     jaggedness = new Range(5, 20),
                     speed = new Range(1, 3),
                     pulseFrequency = new Range(2, 6),
+                    useSplineArcs = false,
+                    showArcNodes = false,
+                    thicknessDecay = 0,
                     accentRange = new DynamicRange(new Range(2, 4), new Range(6, 12)),
                     blurRange = new DynamicRange(new Range(2, 4), new Range(5, 10)),
                     featherTimes = new Range(2, 8),
@@ -45,6 +48,9 @@ export class PlasmaCurrentConfig extends EffectConfig {
         this.jaggedness = jaggedness;
         this.speed = speed;
         this.pulseFrequency = pulseFrequency;
+        this.useSplineArcs = useSplineArcs;
+        this.showArcNodes = showArcNodes;
+        this.thicknessDecay = thicknessDecay;
         this.accentRange = accentRange;
         this.blurRange = blurRange;
         this.featherTimes = featherTimes;

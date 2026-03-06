@@ -43,6 +43,10 @@ export class ReactionDiffusionEffect extends LayerEffect {
                 frequency: randomNumber(1.5, 4),
                 phase: randomNumber(0, Math.PI * 2),
                 amplitude: randomNumber(0.3, 1),
+                driftPhaseX: randomNumber(0, Math.PI * 2),
+                driftPhaseY: randomNumber(0, Math.PI * 2),
+                driftAmp: randomNumber(0.05, 0.25),
+                driftFreq: randomNumber(0.5, 2),
             });
         }
 
@@ -54,6 +58,7 @@ export class ReactionDiffusionEffect extends LayerEffect {
                 phaseX: randomNumber(0, Math.PI * 2),
                 phaseY: randomNumber(0, Math.PI * 2),
                 weight: randomNumber(0.2, 1) / (i + 1),
+                timeSpeedMult: 0.5 + randomNumber(0, 1.5),
             });
         }
 
@@ -101,15 +106,19 @@ export class ReactionDiffusionEffect extends LayerEffect {
 
                 let value = 0;
                 for (const seed of this.data.seeds) {
-                    const dx = nx - seed.x;
-                    const dy = ny - seed.y;
+                    const seedDriftX = seed.driftAmp * Math.sin(seed.driftPhaseX + timePhase * seed.driftFreq);
+                    const seedDriftY = seed.driftAmp * Math.sin(seed.driftPhaseY + timePhase * seed.driftFreq * 0.7);
+                    const dx = nx - (seed.x + seedDriftX);
+                    const dy = ny - (seed.y + seedDriftY);
                     const dist = Math.sqrt(dx * dx + dy * dy);
                     value += seed.amplitude * Math.sin(dist * seed.frequency * Math.PI + seed.phase + timePhase);
                 }
 
                 for (const h of this.data.harmonics) {
-                    value += h.weight * Math.sin(nx * h.freqX * Math.PI + h.phaseX + timePhase)
-                        * Math.cos(ny * h.freqY * Math.PI + h.phaseY + timePhase);
+                    const hTimePhase = timePhase * h.timeSpeedMult;
+                    const compoundPhase = hTimePhase + 0.3 * Math.sin(hTimePhase * 1.7 + h.phaseX);
+                    value += h.weight * Math.sin(nx * h.freqX * Math.PI + h.phaseX + compoundPhase)
+                        * Math.cos(ny * h.freqY * Math.PI + h.phaseY + compoundPhase);
                 }
 
                 row.push(value);
@@ -189,9 +198,12 @@ export class ReactionDiffusionEffect extends LayerEffect {
         const segments = this.#extractContourSegments(field, centerPos);
 
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
-        const lineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
+        const baseLineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
 
         for (const seg of segments) {
+            const levelThick = 0.5 + 0.7 * Math.sin(seg.level * 1.5 + progress * Math.PI * 2 * this.data.speed * 2);
+            const lineWidth = baseLineWidth * levelThick;
             await canvas.drawLine2d(seg.start, seg.end, lineWidth, color, isUnderlay ? theAccentGaston * 0.3 : 0, color);
         }
     }

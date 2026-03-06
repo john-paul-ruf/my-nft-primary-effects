@@ -9,15 +9,16 @@
   },
   "scripts": {
     "render": "node scripts/testRender.js --help",
-    "test-all-random-preset": "node scripts/testRender.js --all --preset random --frames 225 --width 1920 --height 1080 --save-frames --validate-loop"
+    "test-all-random-preset": "node scripts/testRender.js --all --preset random --frames 50 --width 1920 --height 1080 --save-frames --validate-loop"
   },
   "dependencies": {
-    "my-nft-gen": "1.6.9"
+    "my-nft-gen": "1.7.0"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.23.0",
     "babel-jest": "^29.0.0",
-    "jest": "^29.0.0"
+    "jest": "^29.0.0",
+    "sharp": "^0.34.5"
   },
   "jest": {
     "transform": {

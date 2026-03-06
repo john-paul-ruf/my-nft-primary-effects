@@ -23,6 +23,10 @@ export class NeuralMeshConfig extends EffectConfig {
                     maxConnections = new Range(3, 6),
                     pulseFrequency = new Range(2, 6),
                     speed = new Range(1, 2),
+                    useCurvedConnections = false,
+                    showSignalPulse = false,
+                    neuronStyle = 'ring',
+                    signalPulseSize = new Range(2, 5),
                     accentRange = new DynamicRange(new Range(1, 2), new Range(3, 7)),
                     blurRange = new DynamicRange(new Range(1, 2), new Range(3, 6)),
                     featherTimes = new Range(2, 6),
@@ -43,6 +47,10 @@ export class NeuralMeshConfig extends EffectConfig {
         this.maxConnections = maxConnections;
         this.pulseFrequency = pulseFrequency;
         this.speed = speed;
+        this.useCurvedConnections = useCurvedConnections;
+        this.showSignalPulse = showSignalPulse;
+        this.neuronStyle = neuronStyle;
+        this.signalPulseSize = signalPulseSize;
         this.accentRange = accentRange;
         this.blurRange = blurRange;
         this.featherTimes = featherTimes;

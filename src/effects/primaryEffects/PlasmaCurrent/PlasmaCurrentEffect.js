@@ -63,6 +63,9 @@ export class PlasmaCurrentEffect extends LayerEffect {
                 jags,
                 forks,
                 radius: arcRadius * (0.6 + randomNumber(0, 0.4)),
+                speedMult: randomNumber(0.5, 2),
+                radiusBreathPhase: randomNumber(0, Math.PI * 2),
+                radiusBreathFreq: randomNumber(1, 3),
             });
         }
 
@@ -79,6 +82,9 @@ export class PlasmaCurrentEffect extends LayerEffect {
             outerColor: this.config.outerColor.getColor(settings),
             speed: getRandomIntInclusive(this.config.speed.lower, this.config.speed.upper),
             pulseFrequency: getRandomIntInclusive(this.config.pulseFrequency.lower, this.config.pulseFrequency.upper),
+            useSplineArcs: this.config.useSplineArcs,
+            showArcNodes: this.config.showArcNodes,
+            thicknessDecay: this.config.thicknessDecay,
             accentRange: {
                 lower: getRandomIntInclusive(this.config.accentRange.bottom.lower, this.config.accentRange.bottom.upper),
                 upper: getRandomIntInclusive(this.config.accentRange.top.lower, this.config.accentRange.top.upper),
@@ -116,11 +122,13 @@ export class PlasmaCurrentEffect extends LayerEffect {
 
     #computeArcPath(arc, centerPos, currentFrame, numberOfFrames) {
         const progress = (currentFrame % numberOfFrames) / numberOfFrames;
-        const rotAngle = progress * this.data.speed * 360;
-        const pulse = findValue(0.7, 1.3, this.data.pulseFrequency, numberOfFrames, currentFrame);
+        const rotAngle = progress * this.data.speed * arc.speedMult * 360;
+        const pulse = findValue(0.6, 1.4, this.data.pulseFrequency, numberOfFrames, currentFrame);
+        const radiusBreath = 0.8 + 0.3 * Math.sin(arc.radiusBreathPhase + progress * Math.PI * 2 * arc.radiusBreathFreq) + 0.15 * Math.sin(arc.radiusBreathPhase * 1.7 + progress * Math.PI * 2 * arc.radiusBreathFreq * 2.5);
+        const arcRadius = arc.radius * pulse * radiusBreath;
 
-        const startPos = findPointByAngleAndCircle(centerPos, arc.startAngle + rotAngle, arc.radius * pulse);
-        const endPos = findPointByAngleAndCircle(centerPos, arc.endAngle + rotAngle, arc.radius * pulse);
+        const startPos = findPointByAngleAndCircle(centerPos, arc.startAngle + rotAngle, arcRadius);
+        const endPos = findPointByAngleAndCircle(centerPos, arc.endAngle + rotAngle, arcRadius);
 
         const points = [];
         for (let s = 0; s <= arc.segments; s++) {
@@ -130,8 +138,8 @@ export class PlasmaCurrentEffect extends LayerEffect {
 
             if (s > 0 && s < arc.segments && arc.jags[s]) {
                 const jag = arc.jags[s];
-                const wobbleX = jag.offsetX * Math.sin(jag.phaseX + progress * Math.PI * 2 * this.data.speed);
-                const wobbleY = jag.offsetY * Math.cos(jag.phaseY + progress * Math.PI * 2 * this.data.speed);
+                const wobbleX = jag.offsetX * 1.5 * Math.sin(jag.phaseX + progress * Math.PI * 2 * this.data.speed);
+                const wobbleY = jag.offsetY * 1.5 * Math.cos(jag.phaseY + progress * Math.PI * 2 * this.data.speed);
                 points.push({x: baseX + wobbleX * pulse, y: baseY + wobbleY * pulse});
             } else {
                 points.push({x: baseX, y: baseY});
@@ -143,12 +151,29 @@ export class PlasmaCurrentEffect extends LayerEffect {
     async #drawArcOnCanvas(canvas, arc, centerPos, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
         const points = this.#computeArcPath(arc, centerPos, currentFrame, numberOfFrames);
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
-        const lineThickness = isUnderlay
+        const baseThickness = isUnderlay
             ? this.data.stroke + this.data.thickness + theAccentGaston
             : this.data.thickness;
 
-        for (let i = 1; i < points.length; i++) {
-            await canvas.drawLine2d(points[i - 1], points[i], lineThickness, color, 0, color);
+        if (this.data.useSplineArcs && points.length >= 3) {
+            await canvas.drawSpline(points, 0.5, baseThickness, color, 0, color, false);
+        } else {
+            for (let i = 1; i < points.length; i++) {
+                const t = i / (points.length - 1);
+                const decay = 1 - this.data.thicknessDecay * t;
+                const segThickness = baseThickness * Math.max(0.2, decay);
+                await canvas.drawLine2d(points[i - 1], points[i], segThickness, color, 0, color);
+            }
+        }
+
+        if (this.data.showArcNodes && points.length >= 2) {
+            const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+            const nodePulse1 = 0.6 + 0.8 * Math.sin(arc.radiusBreathPhase + progress * Math.PI * 2 * 3);
+            const nodePulse2 = 0.6 + 0.8 * Math.sin(arc.radiusBreathPhase + Math.PI + progress * Math.PI * 2 * 3);
+            const nodeSize1 = baseThickness * 2 * nodePulse1;
+            const nodeSize2 = baseThickness * 2 * nodePulse2;
+            await canvas.drawRing2d(points[0], nodeSize1, baseThickness * 0.5, color, isUnderlay ? theAccentGaston * 0.3 : 0, color);
+            await canvas.drawRing2d(points[points.length - 1], nodeSize2, baseThickness * 0.5, color, isUnderlay ? theAccentGaston * 0.3 : 0, color);
         }
 
         for (const fork of arc.forks) {
@@ -174,17 +199,23 @@ export class PlasmaCurrentEffect extends LayerEffect {
                 const by = branchStart.y + (forkEnd.y - branchStart.y) * t;
                 if (s > 0 && s < fork.segments && fork.jags[s]) {
                     const jag = fork.jags[s];
-                    const wx = jag.offsetX * Math.sin(jag.phaseX + forkProgress * Math.PI * 2 * this.data.speed);
-                    const wy = jag.offsetY * Math.cos(jag.phaseY + forkProgress * Math.PI * 2 * this.data.speed);
+                    const wx = jag.offsetX * 1.5 * Math.sin(jag.phaseX + forkProgress * Math.PI * 2 * this.data.speed);
+                    const wy = jag.offsetY * 1.5 * Math.cos(jag.phaseY + forkProgress * Math.PI * 2 * this.data.speed);
                     forkPoints.push({x: bx + wx * pulse, y: by + wy * pulse});
                 } else {
                     forkPoints.push({x: bx, y: by});
                 }
             }
 
-            const forkThickness = lineThickness * 0.6;
-            for (let i = 1; i < forkPoints.length; i++) {
-                await canvas.drawLine2d(forkPoints[i - 1], forkPoints[i], forkThickness, color, 0, color);
+            const forkThickness = baseThickness * 0.6;
+            if (this.data.useSplineArcs && forkPoints.length >= 3) {
+                await canvas.drawSpline(forkPoints, 0.5, forkThickness, color, 0, color, false);
+            } else {
+                for (let i = 1; i < forkPoints.length; i++) {
+                    const t = i / (forkPoints.length - 1);
+                    const decay = 1 - this.data.thicknessDecay * t;
+                    await canvas.drawLine2d(forkPoints[i - 1], forkPoints[i], forkThickness * Math.max(0.2, decay), color, 0, color);
+                }
             }
         }
     }

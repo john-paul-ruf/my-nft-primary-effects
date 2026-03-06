@@ -22,6 +22,10 @@ export class StainedGlassConfig extends EffectConfig {
                     shardSides = new Range(4, 8),
                     shimmerFrequency = new Range(1, 4),
                     speed = new Range(1, 2),
+                    fillCells = false,
+                    fillAlpha = new Range(10, 30),
+                    showLeading = false,
+                    cellCornerDots = false,
                     accentRange = new DynamicRange(new Range(1, 3), new Range(4, 8)),
                     blurRange = new DynamicRange(new Range(1, 2), new Range(3, 6)),
                     featherTimes = new Range(2, 6),
@@ -41,6 +45,10 @@ export class StainedGlassConfig extends EffectConfig {
         this.shardSides = shardSides;
         this.shimmerFrequency = shimmerFrequency;
         this.speed = speed;
+        this.fillCells = fillCells;
+        this.fillAlpha = fillAlpha;
+        this.showLeading = showLeading;
+        this.cellCornerDots = cellCornerDots;
         this.accentRange = accentRange;
         this.blurRange = blurRange;
         this.featherTimes = featherTimes;

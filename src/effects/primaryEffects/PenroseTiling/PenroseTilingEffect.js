@@ -70,6 +70,11 @@ export class PenroseTilingEffect extends LayerEffect {
                         x2: p2.x,
                         y2: p2.y,
                         dist: Math.sqrt(p1.x * p1.x + p1.y * p1.y),
+                        wobblePhase: randomNumber(0, Math.PI * 2),
+                        wobbleAmp: randomNumber(0.02, 0.08),
+                        thicknessPhase: randomNumber(0, Math.PI * 2),
+                        thicknessFreq: randomNumber(1, 3),
+                        lengthPhase: randomNumber(0, Math.PI * 2),
                     });
                 }
             }
@@ -133,29 +138,37 @@ export class PenroseTilingEffect extends LayerEffect {
 
     async #drawTilingLayer(canvas, centerPos, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
-        const lineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
+        const baseLineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
 
         const progress = (currentFrame % numberOfFrames) / numberOfFrames;
         const rotAngle = progress * this.data.rotationSpeed * 360;
-        const pulse = findValue(0.95, 1.05, this.data.pulseFrequency, numberOfFrames, currentFrame);
+        const pulse = findValue(0.85, 1.15, this.data.pulseFrequency, numberOfFrames, currentFrame);
         const rotRad = rotAngle * Math.PI / 180;
         const cosR = Math.cos(rotRad);
         const sinR = Math.sin(rotRad);
+        const wavePhase = progress * Math.PI * 2 * this.data.speed;
 
         for (const edge of this.data.edges) {
+            const radialWave = 0.8 + 0.3 * Math.sin(wavePhase - edge.dist * 8) + 0.15 * Math.sin(wavePhase * 1.7 - edge.dist * 12 + edge.wobblePhase);
+            const edgeWobble = 1 + edge.wobbleAmp * Math.sin(edge.wobblePhase + wavePhase * 2);
+            const edgePulse = pulse * radialWave * edgeWobble;
+
             const rx1 = edge.x1 * cosR - edge.y1 * sinR;
             const ry1 = edge.x1 * sinR + edge.y1 * cosR;
             const rx2 = edge.x2 * cosR - edge.y2 * sinR;
             const ry2 = edge.x2 * sinR + edge.y2 * cosR;
 
             const start = {
-                x: centerPos.x + rx1 * this.data.tileRadius * pulse,
-                y: centerPos.y + ry1 * this.data.tileRadius * pulse,
+                x: centerPos.x + rx1 * this.data.tileRadius * edgePulse,
+                y: centerPos.y + ry1 * this.data.tileRadius * edgePulse,
             };
             const end = {
-                x: centerPos.x + rx2 * this.data.tileRadius * pulse,
-                y: centerPos.y + ry2 * this.data.tileRadius * pulse,
+                x: centerPos.x + rx2 * this.data.tileRadius * edgePulse,
+                y: centerPos.y + ry2 * this.data.tileRadius * edgePulse,
             };
+
+            const thicknessMod = 0.5 + 0.7 * Math.sin(edge.thicknessPhase + progress * Math.PI * 2 * edge.thicknessFreq + edge.dist * 8);
+            const lineWidth = baseLineWidth * thicknessMod;
 
             await canvas.drawLine2d(start, end, lineWidth, color, isUnderlay ? theAccentGaston * 0.3 : 0, color);
         }

@@ -83,6 +83,11 @@ export class WaveCollapseEffect extends LayerEffect {
                     patternIdx,
                     collapseOrder,
                     rotation: getRandomIntInclusive(0, 3) * 90,
+                    rotationSpeed: randomNumber(-1, 1),
+                    scalePhase: randomNumber(0, Math.PI * 2),
+                    jitterPhaseX: randomNumber(0, Math.PI * 2),
+                    jitterPhaseY: randomNumber(0, Math.PI * 2),
+                    jitterAmp: randomNumber(1, 5),
                 });
             }
         }
@@ -124,7 +129,7 @@ export class WaveCollapseEffect extends LayerEffect {
 
         const progress = (currentFrame % numberOfFrames) / numberOfFrames;
         const collapseProgress = (progress * this.data.collapseSpeed) % 1;
-        const wavePulse = findValue(0.97, 1.03, this.data.waveFrequency, numberOfFrames, currentFrame);
+        const wavePulse = findValue(0.8, 1.2, this.data.waveFrequency, numberOfFrames, currentFrame);
 
         const cellSize = (this.data.gridSize * wavePulse) / this.data.cellCount;
         const gridOriginX = centerPos.x - (this.data.gridSize * wavePulse) / 2;
@@ -132,37 +137,52 @@ export class WaveCollapseEffect extends LayerEffect {
 
         for (let i = 0; i < this.data.cells.length; i++) {
             const cell = this.data.cells[i];
-            const cellProgress = (i / this.data.cells.length);
             const collapseWave = (collapseProgress * this.data.cells.length) % this.data.cells.length;
             const distFromWave = Math.abs(i - collapseWave) / this.data.cells.length;
             const collapsed = distFromWave < 0.5;
 
-            const cellX = gridOriginX + cell.col * cellSize;
-            const cellY = gridOriginY + cell.row * cellSize;
+            const cellRotation = progress * cell.rotationSpeed * 360;
+            const cellScale = 0.8 + 0.3 * Math.sin(cell.scalePhase + progress * Math.PI * 2 * 2) + 0.15 * Math.sin(cell.scalePhase * 1.5 + progress * Math.PI * 2 * 3.7);
+            const scaledCellSize = cellSize * cellScale;
+            const jitterX = cell.jitterAmp * Math.sin(cell.jitterPhaseX + progress * Math.PI * 2 * 3);
+            const jitterY = cell.jitterAmp * Math.sin(cell.jitterPhaseY + progress * Math.PI * 2 * 3);
+            const cellCenterX = gridOriginX + cell.col * cellSize + cellSize / 2 + jitterX;
+            const cellCenterY = gridOriginY + cell.row * cellSize + cellSize / 2 + jitterY;
+            const cellX = cellCenterX - scaledCellSize / 2;
+            const cellY = cellCenterY - scaledCellSize / 2;
 
             if (collapsed) {
                 const pattern = this.data.patterns[cell.patternIdx];
                 const glow = isUnderlay ? theAccentGaston * 0.25 : 0;
+                const rotRad = cellRotation * Math.PI / 180;
+                const cosR = Math.cos(rotRad);
+                const sinR = Math.sin(rotRad);
 
                 for (const line of pattern.innerLines) {
-                    const from = this.#getEdgePoint(line.fromEdge, line.fromT, cellX, cellY, cellSize);
-                    const to = this.#getEdgePoint(line.toEdge, line.toT, cellX, cellY, cellSize);
-                    await canvas.drawLine2d(from, to, lineWidth, color, glow, color);
+                    const from = this.#getEdgePoint(line.fromEdge, line.fromT, cellX, cellY, scaledCellSize);
+                    const to = this.#getEdgePoint(line.toEdge, line.toT, cellX, cellY, scaledCellSize);
+                    const rfx = cosR * (from.x - cellCenterX) - sinR * (from.y - cellCenterY) + cellCenterX;
+                    const rfy = sinR * (from.x - cellCenterX) + cosR * (from.y - cellCenterY) + cellCenterY;
+                    const rtx = cosR * (to.x - cellCenterX) - sinR * (to.y - cellCenterY) + cellCenterX;
+                    const rty = sinR * (to.x - cellCenterX) + cosR * (to.y - cellCenterY) + cellCenterY;
+                    await canvas.drawLine2d({x: rfx, y: rfy}, {x: rtx, y: rty}, lineWidth, color, glow, color);
                 }
 
                 if (pattern.hasDot) {
                     const dotCenter = {
-                        x: cellX + pattern.dotPos.x * cellSize,
-                        y: cellY + pattern.dotPos.y * cellSize,
+                        x: cellX + pattern.dotPos.x * scaledCellSize,
+                        y: cellY + pattern.dotPos.y * scaledCellSize,
                     };
-                    const dotR = pattern.dotRadius * cellSize;
-                    await canvas.drawEllipse2d(dotCenter, dotR, dotR, 0, lineWidth * 0.5, color, glow, color);
+                    const rdx = cosR * (dotCenter.x - cellCenterX) - sinR * (dotCenter.y - cellCenterY) + cellCenterX;
+                    const rdy = sinR * (dotCenter.x - cellCenterX) + cosR * (dotCenter.y - cellCenterY) + cellCenterY;
+                    const dotR = pattern.dotRadius * scaledCellSize;
+                    await canvas.drawRing2d({x: rdx, y: rdy}, dotR, lineWidth * 0.5, color, glow, color);
                 }
             } else {
                 const cornerTL = {x: cellX, y: cellY};
-                const cornerTR = {x: cellX + cellSize, y: cellY};
-                const cornerBR = {x: cellX + cellSize, y: cellY + cellSize};
-                const cornerBL = {x: cellX, y: cellY + cellSize};
+                const cornerTR = {x: cellX + scaledCellSize, y: cellY};
+                const cornerBR = {x: cellX + scaledCellSize, y: cellY + scaledCellSize};
+                const cornerBL = {x: cellX, y: cellY + scaledCellSize};
 
                 const thinLine = lineWidth * 0.3;
                 const dimGlow = isUnderlay ? theAccentGaston * 0.1 : 0;
@@ -179,7 +199,7 @@ export class WaveCollapseEffect extends LayerEffect {
 
             await canvas.drawLine2d(
                 {x: cellX, y: cellY},
-                {x: cellX + cellSize, y: cellY},
+                {x: cellX + scaledCellSize, y: cellY},
                 lineWidth * 0.4,
                 color,
                 0,
@@ -187,7 +207,7 @@ export class WaveCollapseEffect extends LayerEffect {
             );
             await canvas.drawLine2d(
                 {x: cellX, y: cellY},
-                {x: cellX, y: cellY + cellSize},
+                {x: cellX, y: cellY + scaledCellSize},
                 lineWidth * 0.4,
                 color,
                 0,

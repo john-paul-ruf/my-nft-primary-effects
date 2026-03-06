@@ -45,6 +45,11 @@ export class LissajousCageEffect extends LayerEffect {
                 phaseB: randomNumber(0, Math.PI * 2),
                 phaseC: randomNumber(0, Math.PI * 2),
                 amplitudeScale: 0.6 + randomNumber(0, 0.8),
+                tumbleSpeedMult: randomNumber(0.4, 2.5),
+                depthScalePhase: randomNumber(0, Math.PI * 2),
+                depthScaleFreq: randomNumber(0.5, 2),
+                thicknessPhase: randomNumber(0, Math.PI * 2),
+                thicknessFreq: randomNumber(1, 3),
             });
         }
 
@@ -77,13 +82,12 @@ export class LissajousCageEffect extends LayerEffect {
         };
     }
 
-    #project3d(x3d, y3d, z3d, tumbleX, tumbleY) {
+    #project3d(x3d, y3d, z3d, tumbleX, tumbleY, perspectiveDist = 600) {
         let y1 = y3d * Math.cos(tumbleX) - z3d * Math.sin(tumbleX);
         let z1 = y3d * Math.sin(tumbleX) + z3d * Math.cos(tumbleX);
         let x1 = x3d * Math.cos(tumbleY) + z1 * Math.sin(tumbleY);
         let z2 = -x3d * Math.sin(tumbleY) + z1 * Math.cos(tumbleY);
 
-        const perspectiveDist = 600;
         const scale = perspectiveDist / (perspectiveDist + z2);
         return {
             x: x1 * scale,
@@ -98,29 +102,36 @@ export class LissajousCageEffect extends LayerEffect {
 
         const progress = (currentFrame % numberOfFrames) / numberOfFrames;
         const tumblePhase = progress * this.data.speed * Math.PI * 2;
-        const tumbleX = findValue(-0.4, 0.4, this.data.tumbleFrequency, numberOfFrames, currentFrame) + tumblePhase * 0.3;
-        const tumbleY = tumblePhase;
+        const baseTumbleX = findValue(-0.4, 0.4, this.data.tumbleFrequency, numberOfFrames, currentFrame) + tumblePhase * 0.3;
+        const baseTumbleY = tumblePhase;
+        const perspectiveBreath = 500 + 200 * Math.sin(progress * Math.PI * 2 * this.data.speed * 0.7) + 80 * Math.sin(progress * Math.PI * 2 * this.data.speed * 1.9 + 1.3);
 
         for (const curve of this.data.curves) {
-            const amp = this.data.amplitude * curve.amplitudeScale;
+            const ampBreath = 0.8 + 0.3 * Math.sin(curve.phaseA + progress * Math.PI * 2 * 2) + 0.15 * Math.sin(curve.phaseB + progress * Math.PI * 2 * 3.7);
+            const amp = this.data.amplitude * curve.amplitudeScale * ampBreath;
+            const phaseShift = progress * Math.PI * 2 * this.data.speed * curve.tumbleSpeedMult;
+            const curveDepthScale = (this.data.depthScale / 100) * (0.7 + 0.6 * Math.sin(curve.depthScalePhase + progress * Math.PI * 2 * curve.depthScaleFreq));
+            const tumbleX = baseTumbleX + 0.15 * Math.sin(curve.phaseB + progress * Math.PI * 2 * curve.tumbleSpeedMult);
+            const tumbleY = baseTumbleY * curve.tumbleSpeedMult;
 
             for (let i = 0; i < this.data.resolution; i++) {
                 const t1 = (i / this.data.resolution) * Math.PI * 2;
                 const t2 = ((i + 1) / this.data.resolution) * Math.PI * 2;
 
-                const x1_3d = amp * Math.sin(curve.freqA * t1 + curve.phaseA);
-                const y1_3d = amp * Math.sin(curve.freqB * t1 + curve.phaseB);
-                const z1_3d = amp * Math.sin(curve.freqC * t1 + curve.phaseC) * (this.data.depthScale / 100);
+                const x1_3d = amp * Math.sin(curve.freqA * t1 + curve.phaseA + phaseShift);
+                const y1_3d = amp * Math.sin(curve.freqB * t1 + curve.phaseB + phaseShift * 0.7);
+                const z1_3d = amp * Math.sin(curve.freqC * t1 + curve.phaseC + phaseShift * 1.3) * curveDepthScale;
 
-                const x2_3d = amp * Math.sin(curve.freqA * t2 + curve.phaseA);
-                const y2_3d = amp * Math.sin(curve.freqB * t2 + curve.phaseB);
-                const z2_3d = amp * Math.sin(curve.freqC * t2 + curve.phaseC) * (this.data.depthScale / 100);
+                const x2_3d = amp * Math.sin(curve.freqA * t2 + curve.phaseA + phaseShift);
+                const y2_3d = amp * Math.sin(curve.freqB * t2 + curve.phaseB + phaseShift * 0.7);
+                const z2_3d = amp * Math.sin(curve.freqC * t2 + curve.phaseC + phaseShift * 1.3) * curveDepthScale;
 
-                const p1 = this.#project3d(x1_3d, y1_3d, z1_3d, tumbleX, tumbleY);
-                const p2 = this.#project3d(x2_3d, y2_3d, z2_3d, tumbleX, tumbleY);
+                const p1 = this.#project3d(x1_3d, y1_3d, z1_3d, tumbleX, tumbleY, perspectiveBreath);
+                const p2 = this.#project3d(x2_3d, y2_3d, z2_3d, tumbleX, tumbleY, perspectiveBreath);
 
                 const depthFactor = 0.4 + 0.6 * ((p1.depth + this.data.amplitude) / (2 * this.data.amplitude));
-                const lineWidth = baseWidth * Math.max(0.3, depthFactor);
+                const thicknessAnim = 0.6 + 0.8 * Math.sin(curve.thicknessPhase + progress * Math.PI * 2 * curve.thicknessFreq + t1 * 2);
+                const lineWidth = baseWidth * Math.max(0.3, depthFactor) * thicknessAnim;
                 const glow = isUnderlay ? theAccentGaston * depthFactor * 0.3 : 0;
 
                 await canvas.drawLine2d(

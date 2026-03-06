@@ -23,6 +23,9 @@ export class FractalDendriteConfig extends EffectConfig {
                     branchAngleSpread = new Range(20, 45),
                     speed = new Range(1, 2),
                     growthOscillation = new Range(1, 3),
+                    useCurvedBranches = false,
+                    tipStyle = 'none',
+                    tipSize = new Range(2, 6),
                     accentRange = new DynamicRange(new Range(1, 2), new Range(4, 8)),
                     blurRange = new DynamicRange(new Range(1, 2), new Range(3, 6)),
                     featherTimes = new Range(2, 6),
@@ -43,6 +46,9 @@ export class FractalDendriteConfig extends EffectConfig {
         this.branchAngleSpread = branchAngleSpread;
         this.speed = speed;
         this.growthOscillation = growthOscillation;
+        this.useCurvedBranches = useCurvedBranches;
+        this.tipStyle = tipStyle;
+        this.tipSize = tipSize;
         this.accentRange = accentRange;
         this.blurRange = blurRange;
         this.featherTimes = featherTimes;

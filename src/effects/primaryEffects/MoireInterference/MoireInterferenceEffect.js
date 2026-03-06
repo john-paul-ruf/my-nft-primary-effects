@@ -46,6 +46,16 @@ export class MoireInterferenceEffect extends LayerEffect {
                 numberOfLines,
                 phaseOffset: randomNumber(0, Math.PI * 2),
                 rotationDirection: Math.random() > 0.5 ? 1 : -1,
+                speedMultiplier: 0.5 + randomNumber(0, 1.5),
+                spacingPhase: randomNumber(0, Math.PI * 2),
+                spacingOscillation: randomNumber(0.8, 1.5),
+                thicknessPhase: randomNumber(0, Math.PI * 2),
+                thicknessOscillation: getRandomIntInclusive(1, 2),
+                centerDriftPhaseX: randomNumber(0, Math.PI * 2),
+                centerDriftPhaseY: randomNumber(0, Math.PI * 2),
+                centerDriftAmp: randomNumber(5, 30),
+                lineWobblePhase: randomNumber(0, Math.PI * 2),
+                lineWobbleAmp: randomNumber(2, 10),
             });
         }
 
@@ -85,23 +95,33 @@ export class MoireInterferenceEffect extends LayerEffect {
     }
 
     async #drawGrid(canvas, grid, centerPos, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
-        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
-        const rotOffset = progress * this.data.speed * this.data.rotationRange * grid.rotationDirection;
+        const progress = numberOfFrames <= 1 ? 0 : currentFrame / (numberOfFrames - 1);
+        const rotOffset = Math.sin(progress * Math.PI * 2 * this.data.speed) * this.data.rotationRange * grid.rotationDirection * grid.speedMultiplier;
         const angle = grid.baseAngle + rotOffset;
         const angleRad = angle * Math.PI / 180;
 
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
-        const lineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
+        const baseLineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
+        const thicknessScale = 0.6 + 0.8 * Math.sin(grid.thicknessPhase + progress * Math.PI * 2 * this.data.speed * grid.thicknessOscillation);
+        const lineWidth = baseLineWidth * thicknessScale;
+
+        const driftX = grid.centerDriftAmp * Math.sin(grid.centerDriftPhaseX + progress * Math.PI * 2 * this.data.speed);
+        const driftY = grid.centerDriftAmp * Math.sin(grid.centerDriftPhaseY + progress * Math.PI * 2 * this.data.speed);
+        const gridCenterX = centerPos.x + driftX;
+        const gridCenterY = centerPos.y + driftY;
 
         const cosA = Math.cos(angleRad);
         const sinA = Math.sin(angleRad);
         const perpCos = Math.cos(angleRad + Math.PI / 2);
         const perpSin = Math.sin(angleRad + Math.PI / 2);
 
+        const spacingScale = 1 + (grid.spacingOscillation - 1) * Math.sin(grid.spacingPhase + progress * Math.PI * 2 * this.data.speed) + 0.1 * Math.sin(grid.spacingPhase * 1.6 + progress * Math.PI * 2 * this.data.speed * 2);
+
         for (let i = -grid.numberOfLines; i <= grid.numberOfLines; i++) {
-            const offset = i * this.data.lineSpacing;
-            const lineCenterX = centerPos.x + perpCos * offset;
-            const lineCenterY = centerPos.y + perpSin * offset;
+            const offset = i * this.data.lineSpacing * spacingScale;
+            const lineWobble = grid.lineWobbleAmp * Math.sin(grid.lineWobblePhase + progress * Math.PI * 2 * 2 + i * 0.4);
+            const lineCenterX = gridCenterX + perpCos * offset + cosA * lineWobble;
+            const lineCenterY = gridCenterY + perpSin * offset + sinA * lineWobble;
 
             const startX = lineCenterX - cosA * this.data.gridRadius;
             const startY = lineCenterY - sinA * this.data.gridRadius;
@@ -122,10 +142,13 @@ export class MoireInterferenceEffect extends LayerEffect {
     async #drawConcentricRings(canvas, centerPos, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
         const lineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
-        const breathe = findValue(0.95, 1.05, this.data.speed, numberOfFrames, currentFrame);
+        const breathe = findValue(0.85, 1.15, this.data.speed, numberOfFrames, currentFrame);
+        const progress = numberOfFrames <= 1 ? 0 : currentFrame / (numberOfFrames - 1);
 
         for (let r = 1; r <= this.data.concentricRingCount; r++) {
-            const radius = (this.data.gridRadius / this.data.concentricRingCount) * r * breathe;
+            const ringPhase = (r / this.data.concentricRingCount) * Math.PI * 2;
+            const ringWave = 0.9 + 0.2 * Math.sin(ringPhase + progress * Math.PI * 2 * this.data.speed * 2);
+            const radius = (this.data.gridRadius / this.data.concentricRingCount) * r * breathe * ringWave;
             await canvas.drawRing2d(
                 centerPos,
                 radius,

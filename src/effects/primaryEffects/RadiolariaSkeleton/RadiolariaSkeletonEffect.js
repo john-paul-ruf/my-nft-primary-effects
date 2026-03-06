@@ -47,7 +47,9 @@ export class RadiolariaSkeletonEffect extends LayerEffect {
                 poreSides,
                 poreOffset: randomNumber(0, 360),
                 wobblePhase: randomNumber(0, Math.PI * 2),
-                wobbleAmp: randomNumber(0.02, 0.06),
+                wobbleAmp: randomNumber(0.05, 0.15),
+                rotationDirection: s % 2 === 0 ? 1 : -1,
+                rotationSpeedMult: 0.5 + randomNumber(0, 1),
             });
         }
 
@@ -59,6 +61,12 @@ export class RadiolariaSkeletonEffect extends LayerEffect {
                 lengthFactor: 0.7 + randomNumber(0, 0.6),
                 thicknessFactor: 0.5 + randomNumber(0, 0.5),
                 barbs: getRandomIntInclusive(0, 3),
+                extensionPhase: randomNumber(0, Math.PI * 2),
+                extensionFreq: randomNumber(1, 3),
+                wobbleAnglePhase: randomNumber(0, Math.PI * 2),
+                wobbleAngleAmp: randomNumber(3, 12),
+                barbLengthPhase: randomNumber(0, Math.PI * 2),
+                barbLengthFreq: randomNumber(1, 3),
             });
         }
 
@@ -98,18 +106,19 @@ export class RadiolariaSkeletonEffect extends LayerEffect {
         const lineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
         const progress = (currentFrame % numberOfFrames) / numberOfFrames;
         const rotAngle = progress * this.data.speed * 360;
-        const breathe = findValue(0.95, 1.05, this.data.breathFrequency, numberOfFrames, currentFrame);
+        const breathe = findValue(0.85, 1.15, this.data.breathFrequency, numberOfFrames, currentFrame);
 
         for (const shell of this.data.shells) {
             const r = this.data.shellRadius * shell.radiusFactor * breathe;
-            const wobble = shell.wobbleAmp * Math.sin(shell.wobblePhase + ((currentFrame % numberOfFrames) / numberOfFrames) * Math.PI * 2 * this.data.breathFrequency);
+            const wobble = shell.wobbleAmp * Math.sin(shell.wobblePhase + progress * Math.PI * 2 * this.data.breathFrequency) + shell.wobbleAmp * 0.5 * Math.sin(shell.wobblePhase * 1.7 + progress * Math.PI * 2 * this.data.breathFrequency * 2.3);
             const shellR = r * (1 + wobble);
+            const shellRotAngle = rotAngle * shell.rotationDirection * shell.rotationSpeedMult;
 
             await canvas.drawPolygon2d(
                 shellR,
                 centerPos,
                 shell.poreSides * this.data.symmetryFold,
-                rotAngle + shell.poreOffset,
+                shellRotAngle + shell.poreOffset,
                 lineWidth,
                 color,
                 isUnderlay ? theAccentGaston * 0.3 : 0,
@@ -117,10 +126,11 @@ export class RadiolariaSkeletonEffect extends LayerEffect {
             );
 
             for (let seg = 0; seg < this.data.latticeSegments; seg++) {
-                const segAngle = (360 / this.data.latticeSegments) * seg + rotAngle;
+                const segAngle = (360 / this.data.latticeSegments) * seg + shellRotAngle;
+                const latticeThickness = lineWidth * (0.4 + 0.4 * Math.sin(seg * 1.7 + progress * Math.PI * 2 * 2 + shell.wobblePhase));
                 const inner = findPointByAngleAndCircle(centerPos, segAngle, shellR * 0.85);
                 const outer = findPointByAngleAndCircle(centerPos, segAngle, shellR);
-                await canvas.drawLine2d(inner, outer, lineWidth * 0.6, color, 0, color);
+                await canvas.drawLine2d(inner, outer, latticeThickness, color, 0, color);
             }
         }
 
@@ -137,9 +147,11 @@ export class RadiolariaSkeletonEffect extends LayerEffect {
         }
 
         for (const spine of this.data.spines) {
-            const angle = spine.angle + rotAngle;
+            const wobbleAngle = spine.wobbleAngleAmp * Math.sin(spine.wobbleAnglePhase + progress * Math.PI * 2 * 2);
+            const angle = spine.angle + rotAngle + wobbleAngle;
+            const extension = 0.5 + 0.5 * Math.sin(spine.extensionPhase + progress * Math.PI * 2 * spine.extensionFreq);
             const basePos = findPointByAngleAndCircle(centerPos, angle, this.data.shellRadius * breathe);
-            const tipPos = findPointByAngleAndCircle(centerPos, angle, this.data.shellRadius * breathe + this.data.spineLength * spine.lengthFactor);
+            const tipPos = findPointByAngleAndCircle(centerPos, angle, this.data.shellRadius * breathe + this.data.spineLength * spine.lengthFactor * extension);
             const spineWidth = lineWidth * spine.thicknessFactor;
 
             await canvas.drawLine2d(basePos, tipPos, spineWidth, color, isUnderlay ? theAccentGaston * 0.3 : 0, color);
@@ -150,8 +162,9 @@ export class RadiolariaSkeletonEffect extends LayerEffect {
                     x: basePos.x + (tipPos.x - basePos.x) * t,
                     y: basePos.y + (tipPos.y - basePos.y) * t,
                 };
+                const barbLengthMod = 0.5 + 0.5 * Math.sin(spine.barbLengthPhase + progress * Math.PI * 2 * spine.barbLengthFreq + b * 1.5);
                 const barbAngle = angle + (b % 2 === 0 ? 30 : -30);
-                const barbTip = findPointByAngleAndCircle(barbBase, barbAngle, this.data.spineLength * 0.15);
+                const barbTip = findPointByAngleAndCircle(barbBase, barbAngle, this.data.spineLength * 0.15 * barbLengthMod);
                 await canvas.drawLine2d(barbBase, barbTip, spineWidth * 0.5, color, 0, color);
             }
         }

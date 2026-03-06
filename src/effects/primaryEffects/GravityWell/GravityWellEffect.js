@@ -43,6 +43,8 @@ export class GravityWellEffect extends LayerEffect {
                 strength: randomNumber(this.config.wellStrength.lower, this.config.wellStrength.upper),
                 orbitSpeed: getRandomIntInclusive(1, 3),
                 phaseOffset: randomNumber(0, 360),
+                strengthPhase: randomNumber(0, Math.PI * 2),
+                strengthFreq: getRandomIntInclusive(1, 3),
             });
         }
 
@@ -62,6 +64,10 @@ export class GravityWellEffect extends LayerEffect {
             wells,
             speed: getRandomIntInclusive(this.config.speed.lower, this.config.speed.upper),
             pulseFrequency: getRandomIntInclusive(this.config.pulseFrequency.lower, this.config.pulseFrequency.upper),
+            showConcentricRings: this.config.showConcentricRings,
+            concentricRingCount: getRandomIntInclusive(this.config.concentricRingCount.lower, this.config.concentricRingCount.upper),
+            showEventHorizon: this.config.showEventHorizon,
+            wellPolarity: this.config.wellPolarity,
             gridPointsPerLine: gridLines * 2,
             accentRange: {
                 lower: getRandomIntInclusive(this.config.accentRange.bottom.lower, this.config.accentRange.bottom.upper),
@@ -76,14 +82,18 @@ export class GravityWellEffect extends LayerEffect {
     }
 
     #getWellPositions(centerPos, currentFrame, numberOfFrames) {
-        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const progress = numberOfFrames <= 1 ? 0 : currentFrame / (numberOfFrames - 1);
         const rotOffset = progress * this.data.speed * 360;
-        const pulse = findValue(0.9, 1.1, this.data.pulseFrequency, numberOfFrames, currentFrame);
+        const pulse = findValue(0.8, 1.2, this.data.pulseFrequency, numberOfFrames, currentFrame);
 
-        return this.data.wells.map(well => {
+        return this.data.wells.map((well, idx) => {
             const angle = well.angle + rotOffset * well.orbitSpeed + well.phaseOffset;
+            const strengthMod = 0.6 + 0.5 * Math.sin(well.strengthPhase + progress * Math.PI * 2 * well.strengthFreq) + 0.3 * Math.sin(well.strengthPhase * 1.5 + progress * Math.PI * 2 * well.strengthFreq * 2);
             const pos = findPointByAngleAndCircle(centerPos, angle, well.orbitRadius * pulse);
-            return {...pos, strength: well.strength * pulse};
+            let polarity = 1;
+            if (this.data.wellPolarity === 'repel') polarity = -1;
+            else if (this.data.wellPolarity === 'mixed') polarity = idx % 2 === 0 ? 1 : -1;
+            return {...pos, strength: well.strength * pulse * strengthMod, polarity};
         });
     }
 
@@ -95,8 +105,9 @@ export class GravityWellEffect extends LayerEffect {
             const distY = py - well.y;
             const dist = Math.sqrt(distX * distX + distY * distY) + 1;
             const force = well.strength / dist;
-            dx -= (distX / dist) * force;
-            dy -= (distY / dist) * force;
+            const polarity = well.polarity || 1;
+            dx -= (distX / dist) * force * polarity;
+            dy -= (distY / dist) * force * polarity;
         }
         return {x: px + dx, y: py + dy};
     }
@@ -110,38 +121,55 @@ export class GravityWellEffect extends LayerEffect {
         const lines = this.data.gridLines;
         const pts = this.data.gridPointsPerLine;
 
+        const glow = isUnderlay ? theAccentGaston * 0.3 : 0;
+        const progress = numberOfFrames <= 1 ? 0 : currentFrame / (numberOfFrames - 1);
+        const gridRotAngle = Math.sin(progress * Math.PI * 2 * this.data.speed) * 15 * Math.PI / 180;
+        const cosG = Math.cos(gridRotAngle);
+        const sinG = Math.sin(gridRotAngle);
+
         for (let i = 0; i <= lines; i++) {
             const t = (i / lines) * 2 - 1;
+            const lineThickMod = 0.5 + 0.7 * Math.sin(i * 0.8 + progress * Math.PI * 2 * 2);
+            const lineW = lineWidth * lineThickMod;
 
-            let prevH = null;
-            let prevV = null;
+            const hPoints = [];
+            const vPoints = [];
 
             for (let j = 0; j <= pts; j++) {
                 const s = (j / pts) * 2 - 1;
 
-                const hx = centerPos.x + s * r;
-                const hy = centerPos.y + t * r;
-                const hDistorted = this.#distortPoint(hx, hy, wellPositions);
+                const rawHx = s * r;
+                const rawHy = t * r;
+                const hx = centerPos.x + rawHx * cosG - rawHy * sinG;
+                const hy = centerPos.y + rawHx * sinG + rawHy * cosG;
+                hPoints.push(this.#distortPoint(hx, hy, wellPositions));
 
-                if (prevH) {
-                    await canvas.drawLine2d(prevH, hDistorted, lineWidth, color, isUnderlay ? theAccentGaston * 0.3 : 0, color);
-                }
-                prevH = hDistorted;
+                const rawVx = t * r;
+                const rawVy = s * r;
+                const vx = centerPos.x + rawVx * cosG - rawVy * sinG;
+                const vy = centerPos.y + rawVx * sinG + rawVy * cosG;
+                vPoints.push(this.#distortPoint(vx, vy, wellPositions));
+            }
 
-                const vx = centerPos.x + t * r;
-                const vy = centerPos.y + s * r;
-                const vDistorted = this.#distortPoint(vx, vy, wellPositions);
+            await canvas.drawSpline(hPoints, 0.5, lineW, color, glow, color, false);
+            await canvas.drawSpline(vPoints, 0.5, lineW, color, glow, color, false);
+        }
 
-                if (prevV) {
-                    await canvas.drawLine2d(prevV, vDistorted, lineWidth, color, isUnderlay ? theAccentGaston * 0.3 : 0, color);
-                }
-                prevV = vDistorted;
+        if (this.data.showConcentricRings) {
+            const ringSpacing = r / (this.data.concentricRingCount + 1);
+            for (let ci = 1; ci <= this.data.concentricRingCount; ci++) {
+                await canvas.drawDashedRing2d(centerPos, ringSpacing * ci, lineWidth * 0.5, color, [6, 4]);
             }
         }
 
         for (const well of wellPositions) {
             const dotSize = isUnderlay ? this.data.thickness * 3 + theAccentGaston : this.data.thickness * 3;
             await canvas.drawRing2d(well, dotSize, dotSize * 0.5, color, isUnderlay ? theAccentGaston : 0, color);
+
+            if (this.data.showEventHorizon) {
+                const horizonRadius = well.strength * 0.5;
+                await canvas.drawRing2d(well, horizonRadius, lineWidth * 1.5, color, isUnderlay ? theAccentGaston * 0.5 : 0, color);
+            }
         }
     }
 

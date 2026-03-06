@@ -54,6 +54,10 @@ export class SonicRosetteEffect extends LayerEffect {
                 amplitudeScale: 0.6 + randomNumber(0, 0.8),
                 rotationOffset: randomNumber(0, 360),
                 harmonics,
+                rotationSpeedMult: randomNumber(0.3, 2.5),
+                breathPhase: randomNumber(0, Math.PI * 2),
+                breathFreqMult: randomNumber(0.5, 2),
+                thicknessPhase: randomNumber(0, Math.PI * 2),
             });
         }
 
@@ -91,11 +95,14 @@ export class SonicRosetteEffect extends LayerEffect {
 
         const progress = (currentFrame % numberOfFrames) / numberOfFrames;
         const rotAngle = progress * this.data.speed * 360;
-        const breathe = findValue(0.95, 1.05, this.data.breathFrequency, numberOfFrames, currentFrame);
+        const breathe = findValue(0.75, 1.25, this.data.breathFrequency, numberOfFrames, currentFrame);
+        const harmonicPhaseShift = progress * Math.PI * 2 * this.data.speed;
 
         for (const roseLayer of this.data.roseLayers) {
-            const amp = this.data.amplitude * roseLayer.amplitudeScale * breathe;
+            const layerBreath = 0.7 + 0.4 * Math.sin(roseLayer.breathPhase + progress * Math.PI * 2 * roseLayer.breathFreqMult * 2) + 0.2 * Math.sin(roseLayer.breathPhase * 1.5 + progress * Math.PI * 2 * roseLayer.breathFreqMult * 3.3);
+            const amp = this.data.amplitude * roseLayer.amplitudeScale * breathe * layerBreath;
             const maxTheta = Math.PI * 2 * roseLayer.d;
+            const layerRotAngle = rotAngle * roseLayer.rotationSpeedMult;
 
             for (let i = 0; i < this.data.resolution; i++) {
                 const t1 = (i / this.data.resolution) * maxTheta;
@@ -105,11 +112,12 @@ export class SonicRosetteEffect extends LayerEffect {
                 let r2 = amp * Math.cos(roseLayer.k * t2);
 
                 for (const harmonic of roseLayer.harmonics) {
-                    r1 += harmonic.amplitude * Math.sin(harmonic.frequency * t1 + harmonic.phase);
-                    r2 += harmonic.amplitude * Math.sin(harmonic.frequency * t2 + harmonic.phase);
+                    const animPhase = harmonic.phase + harmonicPhaseShift * harmonic.frequency * 0.3 * roseLayer.rotationSpeedMult;
+                    r1 += harmonic.amplitude * Math.sin(harmonic.frequency * t1 + animPhase);
+                    r2 += harmonic.amplitude * Math.sin(harmonic.frequency * t2 + animPhase);
                 }
 
-                const rot = (rotAngle + roseLayer.rotationOffset) * Math.PI / 180;
+                const rot = (layerRotAngle + roseLayer.rotationOffset) * Math.PI / 180;
                 const a1 = t1 + rot;
                 const a2 = t2 + rot;
 
@@ -118,8 +126,9 @@ export class SonicRosetteEffect extends LayerEffect {
                 const x2 = centerPos.x + r2 * Math.cos(a2);
                 const y2 = centerPos.y + r2 * Math.sin(a2);
 
-                const rNorm = Math.abs(r1) / amp;
-                const lineWidth = baseWidth * (0.5 + 0.5 * rNorm);
+                const rNorm = Math.abs(r1) / (amp || 1);
+                const thicknessWave = 0.6 + 0.8 * Math.sin(roseLayer.thicknessPhase + progress * Math.PI * 2 * 2 + t1 * 3);
+                const lineWidth = baseWidth * (0.5 + 0.5 * rNorm) * thicknessWave;
                 const glow = isUnderlay ? theAccentGaston * rNorm * 0.3 : 0;
 
                 await canvas.drawLine2d(

@@ -25,6 +25,10 @@ export class SacredMandalaConfig extends EffectConfig {
                     speed = new Range(1, 3),
                     breathFrequency = new Range(1, 3),
                     breathAmplitude = 0.08,
+                    useCurvedPetals = false,
+                    dashedRings = false,
+                    intersectionDots = false,
+                    innerRosetteRings = new Range(0, 0),
                     accentRange = new DynamicRange(new Range(1, 2), new Range(3, 7)),
                     blurRange = new DynamicRange(new Range(1, 2), new Range(3, 6)),
                     featherTimes = new Range(2, 6),
@@ -47,6 +51,10 @@ export class SacredMandalaConfig extends EffectConfig {
         this.speed = speed;
         this.breathFrequency = breathFrequency;
         this.breathAmplitude = breathAmplitude;
+        this.useCurvedPetals = useCurvedPetals;
+        this.dashedRings = dashedRings;
+        this.intersectionDots = intersectionDots;
+        this.innerRosetteRings = innerRosetteRings;
         this.accentRange = accentRange;
         this.blurRange = blurRange;
         this.featherTimes = featherTimes;

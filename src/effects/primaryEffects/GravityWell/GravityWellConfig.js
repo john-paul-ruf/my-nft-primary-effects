@@ -23,6 +23,10 @@ export class GravityWellConfig extends EffectConfig {
                     wellOrbitRadius = new Range(20, 80),
                     speed = new Range(1, 2),
                     pulseFrequency = new Range(1, 3),
+                    showConcentricRings = false,
+                    concentricRingCount = new Range(3, 6),
+                    showEventHorizon = false,
+                    wellPolarity = 'attract',
                     accentRange = new DynamicRange(new Range(1, 2), new Range(3, 7)),
                     blurRange = new DynamicRange(new Range(1, 2), new Range(3, 6)),
                     featherTimes = new Range(2, 6),
@@ -43,6 +47,10 @@ export class GravityWellConfig extends EffectConfig {
         this.wellOrbitRadius = wellOrbitRadius;
         this.speed = speed;
         this.pulseFrequency = pulseFrequency;
+        this.showConcentricRings = showConcentricRings;
+        this.concentricRingCount = concentricRingCount;
+        this.showEventHorizon = showEventHorizon;
+        this.wellPolarity = wellPolarity;
         this.accentRange = accentRange;
         this.blurRange = blurRange;
         this.featherTimes = featherTimes;

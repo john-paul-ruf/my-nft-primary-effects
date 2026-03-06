@@ -41,6 +41,9 @@ export class ChladniPlateEffect extends LayerEffect {
                 n: getRandomIntInclusive(this.config.modeN.lower, this.config.modeN.upper),
                 weight: randomNumber(0.3, 1),
                 phaseOffset: randomNumber(0, Math.PI * 2),
+                weightOscPhase: randomNumber(0, Math.PI * 2),
+                weightOscFreq: randomNumber(0.5, 2),
+                weightOscAmp: randomNumber(0.2, 0.6),
             });
         }
 
@@ -79,9 +82,10 @@ export class ChladniPlateEffect extends LayerEffect {
         let value = 0;
 
         for (const mode of this.data.modes) {
-            const mShifted = mode.m + 0.5 * Math.sin(morph + mode.phaseOffset);
-            const nShifted = mode.n + 0.5 * Math.cos(morph + mode.phaseOffset);
-            value += mode.weight * (
+            const mShifted = mode.m + 1.2 * Math.sin(morph + mode.phaseOffset) + 0.5 * Math.sin(morph * 2.3 + mode.phaseOffset * 1.7);
+            const nShifted = mode.n + 1.2 * Math.cos(morph + mode.phaseOffset) + 0.5 * Math.cos(morph * 1.7 + mode.phaseOffset * 1.3);
+            const animWeight = mode.weight * (1 + mode.weightOscAmp * Math.sin(mode.weightOscPhase + progress * Math.PI * 2 * mode.weightOscFreq));
+            value += animWeight * (
                 Math.cos(mShifted * Math.PI * nx) * Math.cos(nShifted * Math.PI * ny)
                 - Math.cos(nShifted * Math.PI * nx) * Math.cos(mShifted * Math.PI * ny)
             );
@@ -93,7 +97,9 @@ export class ChladniPlateEffect extends LayerEffect {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
         const dotSize = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
         const res = this.data.resolution;
-        const r = this.data.plateRadius;
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const radiusBreath = 0.9 + 0.2 * Math.sin(progress * Math.PI * 2 * this.data.speed * 0.5);
+        const r = this.data.plateRadius * radiusBreath;
         const threshold = this.data.nodalThreshold / res;
 
         for (let gy = 0; gy < res; gy++) {

@@ -48,6 +48,9 @@ export class FractalDendriteEffect extends LayerEffect {
             branchAngleSpread: getRandomIntInclusive(this.config.branchAngleSpread.lower, this.config.branchAngleSpread.upper),
             speed: getRandomIntInclusive(this.config.speed.lower, this.config.speed.upper),
             growthOscillation: getRandomIntInclusive(this.config.growthOscillation.lower, this.config.growthOscillation.upper),
+            useCurvedBranches: this.config.useCurvedBranches,
+            tipStyle: this.config.tipStyle,
+            tipSize: getRandomIntInclusive(this.config.tipSize.lower, this.config.tipSize.upper),
             accentRange: {
                 lower: getRandomIntInclusive(this.config.accentRange.bottom.lower, this.config.accentRange.bottom.upper),
                 upper: getRandomIntInclusive(this.config.accentRange.top.lower, this.config.accentRange.top.upper),
@@ -63,7 +66,7 @@ export class FractalDendriteEffect extends LayerEffect {
         this.#generateBranches(0, -90, this.data.trunkLength, 0);
     }
 
-    #generateBranches(startAngle, direction, length, depth) {
+    #generateBranches(startAngle, direction, length, depth, pathKey = '0') {
         if (depth >= this.data.maxDepth || length < 2) return;
 
         const branch = {
@@ -71,8 +74,17 @@ export class FractalDendriteEffect extends LayerEffect {
             direction,
             length,
             depth,
+            pathKey,
             thicknessFactor: 1 - (depth / this.data.maxDepth) * 0.7,
             phaseOffset: randomNumber(0, Math.PI * 2),
+            curveBend: randomNumber(-0.3, 0.3),
+            growthPhase: randomNumber(0, Math.PI * 2),
+            growthFreq: getRandomIntInclusive(1, 3),
+            swayPhase: randomNumber(0, Math.PI * 2),
+            swayAmp: randomNumber(3, 15),
+            swayFreq: getRandomIntInclusive(1, 3),
+            bendAnimPhase: randomNumber(0, Math.PI * 2),
+            bendAnimAmp: randomNumber(0.1, 0.4),
         };
         this.data.branches.push(branch);
 
@@ -80,47 +92,8 @@ export class FractalDendriteEffect extends LayerEffect {
         for (let i = 0; i < this.data.branchCount; i++) {
             const spread = this.data.branchAngleSpread;
             const angleOffset = ((i / (this.data.branchCount - 1 || 1)) - 0.5) * 2 * spread;
-            this.#generateBranches(startAngle, direction + angleOffset, childLength, depth + 1);
+            this.#generateBranches(startAngle, direction + angleOffset, childLength, depth + 1, `${pathKey}-${i}`);
         }
-    }
-
-    async #drawBranch(canvas, branch, centerPos, currentFrame, numberOfFrames) {
-        const growthProgress = findValue(0, 1, this.data.growthOscillation, numberOfFrames, currentFrame);
-        const rotProgress = (currentFrame % numberOfFrames) / numberOfFrames;
-        const rotationAngle = rotProgress * this.data.speed * 360;
-
-        const depthNormalized = branch.depth / this.data.maxDepth;
-        const visibleLength = branch.length * (1 - depthNormalized * (1 - growthProgress));
-
-        if (visibleLength < 1) return;
-
-        const angleRad = (branch.direction + rotationAngle) * Math.PI / 180;
-
-        let parentX = centerPos.x;
-        let parentY = centerPos.y;
-
-        const ancestors = this.data.branches.filter(b => b.depth < branch.depth);
-        for (const ancestor of ancestors) {
-            if (ancestor.depth < branch.depth) {
-                const aAngle = (ancestor.direction + rotationAngle) * Math.PI / 180;
-                const aGrowth = findValue(0, 1, this.data.growthOscillation, numberOfFrames, currentFrame);
-                const aDepthNorm = ancestor.depth / this.data.maxDepth;
-                const aLen = ancestor.length * (1 - aDepthNorm * (1 - aGrowth));
-                if (ancestor.depth === branch.depth - 1) {
-                    parentX = centerPos.x + Math.cos(aAngle) * aLen;
-                    parentY = centerPos.y + Math.sin(aAngle) * aLen;
-                }
-            }
-        }
-
-        const endX = parentX + Math.cos(angleRad) * visibleLength;
-        const endY = parentY + Math.sin(angleRad) * visibleLength;
-
-        return {
-            start: {x: parentX, y: parentY},
-            end: {x: endX, y: endY},
-            thickness: this.data.thickness * branch.thicknessFactor,
-        };
     }
 
     async #drawLayer(canvas, centerPos, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
@@ -128,7 +101,7 @@ export class FractalDendriteEffect extends LayerEffect {
         const angleStep = 360 / (rootBranches.length || 1);
 
         for (let r = 0; r < rootBranches.length; r++) {
-            const rotProgress = (currentFrame % numberOfFrames) / numberOfFrames;
+            const rotProgress = numberOfFrames <= 1 ? 0 : currentFrame / (numberOfFrames - 1);
             const rotationAngle = rotProgress * this.data.speed * 360;
             const baseAngle = r * angleStep + rotationAngle;
             const growthProgress = findValue(0, 1, this.data.growthOscillation, numberOfFrames, currentFrame);
@@ -137,14 +110,21 @@ export class FractalDendriteEffect extends LayerEffect {
         }
     }
 
-    async #drawTreeRecursive(canvas, pos, angle, length, depth, growthProgress, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
+    async #drawTreeRecursive(canvas, pos, angle, length, depth, growthProgress, currentFrame, numberOfFrames, isUnderlay, theAccentGaston, pathKey = '0') {
         if (depth >= this.data.maxDepth || length < 2) return;
 
+        const progress = numberOfFrames <= 1 ? 0 : currentFrame / (numberOfFrames - 1);
+        const branch = this.data.branches.find(b => b.pathKey === pathKey);
+        const branchGrowth = branch
+            ? 0.5 + 0.35 * Math.sin(branch.growthPhase + progress * Math.PI * 2 * branch.growthFreq) + 0.2 * Math.sin(branch.growthPhase * 1.5 + progress * Math.PI * 2 * branch.growthFreq * 2)
+            : growthProgress;
+        const effectiveGrowth = (growthProgress + branchGrowth) / 2;
         const depthNorm = depth / this.data.maxDepth;
-        const visibleLength = length * (1 - depthNorm * (1 - growthProgress));
+        const visibleLength = length * (1 - depthNorm * (1 - effectiveGrowth));
         if (visibleLength < 1) return;
 
-        const angleRad = angle * Math.PI / 180;
+        const sway = branch ? branch.swayAmp * Math.sin(branch.swayPhase + progress * Math.PI * 2 * branch.swayFreq) * depthNorm : 0;
+        const angleRad = (angle + sway) * Math.PI / 180;
         const endX = pos.x + Math.cos(angleRad) * visibleLength;
         const endY = pos.y + Math.sin(angleRad) * visibleLength;
 
@@ -154,13 +134,39 @@ export class FractalDendriteEffect extends LayerEffect {
             : this.data.thickness * thicknessFactor;
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
 
-        await canvas.drawLine2d(pos, {x: endX, y: endY}, lineThickness, color, 0, color);
+        const endPos = {x: endX, y: endY};
+
+        if (this.data.useCurvedBranches && branch) {
+            const perpAngle = angleRad + Math.PI / 2;
+            const animatedBend = branch.curveBend + branch.bendAnimAmp * Math.sin(branch.bendAnimPhase + progress * Math.PI * 2 * 2);
+            const bendOffset = visibleLength * animatedBend;
+            const midX = (pos.x + endX) / 2 + Math.cos(perpAngle) * bendOffset;
+            const midY = (pos.y + endY) / 2 + Math.sin(perpAngle) * bendOffset;
+            const ctrl1 = {x: pos.x + (midX - pos.x) * 0.6, y: pos.y + (midY - pos.y) * 0.6};
+            const ctrl2 = {x: endX + (midX - endX) * 0.6, y: endY + (midY - endY) * 0.6};
+            await canvas.drawCubicBezier(pos, ctrl1, ctrl2, endPos, lineThickness, color, 0, color);
+        } else {
+            await canvas.drawLine2d(pos, endPos, lineThickness, color, 0, color);
+        }
+
+        const isLeaf = depth === this.data.maxDepth - 1 || (length * this.data.branchShrink) < 2;
+        if (isLeaf && this.data.tipStyle !== 'none') {
+            const tipSz = this.data.tipSize * thicknessFactor;
+            const accentSz = isUnderlay ? tipSz + theAccentGaston : tipSz;
+            if (this.data.tipStyle === 'dot') {
+                await canvas.drawFilledCircle2d(endPos, accentSz, color);
+            } else if (this.data.tipStyle === 'ring') {
+                await canvas.drawRing2d(endPos, accentSz, lineThickness * 0.5, color, isUnderlay ? theAccentGaston * 0.3 : 0, color);
+            } else if (this.data.tipStyle === 'star') {
+                await canvas.drawStar2d(endPos, accentSz, accentSz * 0.4, 5, angle, lineThickness * 0.5, color);
+            }
+        }
 
         const childLength = visibleLength * this.data.branchShrink;
         for (let i = 0; i < this.data.branchCount; i++) {
             const spread = this.data.branchAngleSpread;
             const angleOffset = ((i / (this.data.branchCount - 1 || 1)) - 0.5) * 2 * spread;
-            await this.#drawTreeRecursive(canvas, {x: endX, y: endY}, angle + angleOffset, childLength, depth + 1, growthProgress, currentFrame, numberOfFrames, isUnderlay, theAccentGaston);
+            await this.#drawTreeRecursive(canvas, endPos, angle + angleOffset, childLength, depth + 1, growthProgress, currentFrame, numberOfFrames, isUnderlay, theAccentGaston, `${pathKey}-${i}`);
         }
     }
 

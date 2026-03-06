@@ -68,29 +68,180 @@ const canvas = await Canvas2dFactory.getNewCanvas(
 );
 ```
 
-**Drawing Methods (All Async):**
+**All Drawing Methods:**
 
 ```javascript
-// Geometric shapes
+// ═══════════════════════════════════════════════════════
+// RINGS, CIRCLES, ELLIPSES, ARCS, DOTS
+// ═══════════════════════════════════════════════════════
+
+// Ring (inner/outer double-stroke circle)
 await canvas.drawRing2d(pos, radius, innerStroke, innerColor, outerStroke, outerColor, alpha);
-await canvas.drawRay2d(pos, angle, radius, length, innerStroke, innerColor, outerStroke, outerColor);
-await canvas.drawRays2d(pos, radius, length, sparsityFactor, innerStroke, innerColor, outerStroke, outerColor);
+
+// Simple circle (single stroke)
+await canvas.drawCircle2d(pos, radius, stroke, color, alpha);
+await canvas.drawFilledCircle2d(pos, radius, fillColor, alpha);
+
+// Ellipse
+await canvas.drawEllipse2d(pos, rx, ry, stroke, color, alpha);
+await canvas.drawFilledEllipse2d(pos, rx, ry, fillColor, alpha);
+
+// Arc (partial circle)
+await canvas.drawArc2d(pos, radius, startAngle, endAngle, stroke, color, alpha);
+await canvas.drawFilledArc2d(pos, radius, startAngle, endAngle, fillColor, alpha);
+
+// Dots (filled circles, simpler than drawCircle)
+await canvas.drawDot(pos, radius, color, alpha);
+await canvas.drawDots(positions, radius, color, alpha);  // Batch: array of {x,y}
+
+// ═══════════════════════════════════════════════════════
+// RECTANGLES
+// ═══════════════════════════════════════════════════════
+
+await canvas.drawRect2d(x, y, width, height, stroke, color, alpha);
+await canvas.drawFilledRect2d(x, y, width, height, fillColor, alpha);
+await canvas.drawRoundedRect2d(x, y, width, height, cornerRadius, stroke, color, alpha);
+await canvas.drawFilledRoundedRect2d(x, y, width, height, cornerRadius, fillColor, alpha);
+
+// ═══════════════════════════════════════════════════════
+// POLYGONS
+// ═══════════════════════════════════════════════════════
+
+// Regular polygon (N sides, computed from center)
 await canvas.drawPolygon2d(radius, pos, numberOfSides, startAngle, innerStroke, innerColor, outerStroke, outerColor, alpha);
 await canvas.drawFilledPolygon2d(radius, pos, numberOfSides, startAngle, fillColor, alpha);
 
-// Lines and curves
+// Custom polygon (arbitrary points array [{x,y}, ...])
+await canvas.drawCustomPolygon2d(points, stroke, color, alpha);
+await canvas.drawFilledCustomPolygon2d(points, fillColor, alpha);
+
+// ═══════════════════════════════════════════════════════
+// STARS, CROSSES, ARROWS
+// ═══════════════════════════════════════════════════════
+
+await canvas.drawStar2d(pos, outerRadius, innerRadius, points, startAngle, stroke, color, alpha);
+await canvas.drawFilledStar2d(pos, outerRadius, innerRadius, points, startAngle, fillColor, alpha);
+await canvas.drawCross2d(pos, size, thickness, stroke, color, alpha);
+await canvas.drawArrow2d(start, end, headLength, headWidth, stroke, color, alpha);
+
+// ═══════════════════════════════════════════════════════
+// LINES AND RAYS
+// ═══════════════════════════════════════════════════════
+
+// Line (inner/outer double-stroke)
 await canvas.drawLine2d(startPos, endPos, innerStroke, innerColor, outerStroke, outerColor, alpha);
+
+// Gradient lines
 await canvas.drawGradientLine2d(startPos, endPos, stroke, startColor, endColor);
+await canvas.drawLinearGradientLine2d(startPos, endPos, stroke, colorStops);  // Multi-stop
+
+// Rays from center point
+await canvas.drawRay2d(pos, angle, radius, length, innerStroke, innerColor, outerStroke, outerColor);
+await canvas.drawRays2d(pos, radius, length, sparsityFactor, innerStroke, innerColor, outerStroke, outerColor);
+
+// Dashed lines
+await canvas.drawDashedLine2d(start, end, stroke, color, dashArray, alpha);
+
+// ═══════════════════════════════════════════════════════
+// CURVES AND PATHS
+// ═══════════════════════════════════════════════════════
+
+// Quadratic bezier (1 control point)
 await canvas.drawBezierCurve(start, control, end, innerStroke, innerColor, outerStroke, outerColor);
+
+// Cubic bezier (2 control points)
+await canvas.drawCubicBezier(start, control1, control2, end, innerStroke, innerColor, outerStroke, outerColor, alpha);
+
+// Catmull-Rom spline (smooth curve through points)
+await canvas.drawSpline(points, tension, innerStroke, innerColor, outerStroke, outerColor, closed, alpha);
+
+// Path (array of points or SVG path string)
 await canvas.drawPath(segment, innerStroke, innerColor, outerStroke, outerColor);
+await canvas.drawFilledPath2d(segment, fillColor, alpha);
 
-// Advanced
+// ═══════════════════════════════════════════════════════
+// GRADIENTS
+// ═══════════════════════════════════════════════════════
+
+// colorStops = [{offset: 0, color: '#FF0000'}, {offset: 1, color: '#0000FF'}]
 await canvas.drawGradientRect(x, y, width, height, colorStops);
-await canvas.drawText(text, x, y, options);
+await canvas.drawRadialGradient(pos, innerRadius, outerRadius, colorStops);
+await canvas.drawGradientRing2d(pos, radius, stroke, colorStops);
+await canvas.drawGradientPath2d(segment, stroke, colorStops);
 
-// Export
-await canvas.toFile('output.png');  // Save to disk
-const layer = await canvas.convertToLayer();  // Convert to Layer object
+// ═══════════════════════════════════════════════════════
+// DASHED SHAPES AND GRIDS
+// ═══════════════════════════════════════════════════════
+
+// dashArray = [dashLength, gapLength] e.g. [10, 5]
+await canvas.drawDashedRing2d(pos, radius, stroke, color, dashArray, alpha);
+await canvas.drawDashedRect2d(x, y, width, height, stroke, color, dashArray, alpha);
+await canvas.drawGrid2d(x, y, width, height, cellWidth, cellHeight, stroke, color, alpha);
+
+// ═══════════════════════════════════════════════════════
+// TEXT
+// ═══════════════════════════════════════════════════════
+
+await canvas.drawText(text, x, y, options);
+// options: { fontFamily, fontSize, fontWeight, fontStyle, color, alpha,
+//            textAnchor, dominantBaseline, letterSpacing, textDecoration,
+//            strokeWidth, strokeColor, rotation }
+
+await canvas.drawTextOnPath(text, pathData, options);
+// pathData: array of {x,y} points or SVG path string
+// options: { fontFamily, fontSize, fontWeight, color, alpha, startOffset, letterSpacing }
+
+// ═══════════════════════════════════════════════════════
+// IMAGE EMBEDDING
+// ═══════════════════════════════════════════════════════
+
+await canvas.drawImage(buffer, x, y, width, height, alpha);  // PNG buffer or base64
+
+// ═══════════════════════════════════════════════════════
+// STATE AND TRANSFORMS (Synchronous)
+// ═══════════════════════════════════════════════════════
+
+canvas.saveState();           // Push state (alpha, blend, transforms, filters, clips)
+canvas.restoreState();        // Pop state
+canvas.setGlobalAlpha(alpha); // Set opacity for subsequent draws (0-1)
+canvas.setBlendMode(mode);    // Set SVG blend mode ('normal', 'multiply', 'screen', etc.)
+canvas.translate(x, y);       // Add translation transform
+canvas.rotate(angle, cx, cy); // Add rotation (degrees, optional center)
+canvas.scale(sx, sy);         // Add scale transform
+canvas.resetTransform();      // Clear all transforms
+
+// ═══════════════════════════════════════════════════════
+// GROUPING
+// ═══════════════════════════════════════════════════════
+
+canvas.beginGroup(options);   // options: { transform, opacity, blendMode, clipPath }
+canvas.endGroup();
+
+// ═══════════════════════════════════════════════════════
+// CLIPPING (restrict drawing to region)
+// ═══════════════════════════════════════════════════════
+
+canvas.setClipRect(x, y, width, height);
+canvas.setClipCircle(pos, radius);
+canvas.setClipPath(points);   // Array of {x,y} or SVG path string
+canvas.clearClip();
+
+// ═══════════════════════════════════════════════════════
+// SVG FILTERS (apply to subsequent draws)
+// ═══════════════════════════════════════════════════════
+
+canvas.applyGaussianBlur(stdDeviation);
+canvas.applyDropShadow(dx, dy, stdDeviation, color);
+canvas.applyGlow(stdDeviation, color);
+canvas.clearFilters();
+
+// ═══════════════════════════════════════════════════════
+// LIFECYCLE AND EXPORT
+// ═══════════════════════════════════════════════════════
+
+await canvas.toFile('output.png');                    // Save to disk
+const layer = await canvas.convertToLayer();          // Convert to Layer object
+canvas.dispose();                                     // Clean up resources
 ```
 
 ### Canvas2D Data Flow
@@ -578,7 +729,7 @@ const options = {
 ```javascript
 async invoke(layer) {
   const canvas = await Canvas2dFactory.getNewCanvas(1024, 1024);
-  await canvas.drawRing2d({ x: 512, y: 512 }, 200, 5, '#FFFFFF');
+  await canvas.drawRing2d({ x: 512, y: 512 }, 200, 5, '#FFFFFF', 2, '#CCCCCC');
   const overlay = await canvas.convertToLayer();
   
   // Place overlay on top with 80% opacity
@@ -595,7 +746,7 @@ async invoke(layer) {
 ```javascript
 async invoke(layer) {
   const canvas = await Canvas2dFactory.getNewCanvas(200, 200);
-  await canvas.drawPolygon2d(50, { x: 100, y: 100 }, 6, 0, '#FFD700');
+  await canvas.drawFilledPolygon2d(50, { x: 100, y: 100 }, 6, 0, '#FFD700', 1.0);
   const pattern = await canvas.convertToLayer();
   
   // Place at position (100, 100) with screen blend
@@ -615,7 +766,7 @@ async invoke(layer) {
 ```javascript
 async invoke(layer) {
   const canvas = await Canvas2dFactory.getNewCanvas(100, 100);
-  await canvas.drawRing2d({ x: 50, y: 50 }, 30, 2, '#FF0000');
+  await canvas.drawRing2d({ x: 50, y: 50 }, 30, 2, '#FF0000', 1, '#CC0000');
   const tile = await canvas.convertToLayer();
   
   let result = layer;
@@ -703,7 +854,7 @@ export class RasterPlusVectorEffect extends BaseEffect {
     // Create vector overlay
     const vectorCanvas = await Canvas2dFactory.getNewCanvas(1024, 1024);
     await vectorCanvas.drawRing2d({ x: 512, y: 512 }, 200, 5, '#FFD700', 2, '#FFA500');
-    await vectorCanvas.drawPolygon2d(150, { x: 512, y: 512 }, 6, 0, '#FF0000', 0.5);
+    await vectorCanvas.drawFilledPolygon2d(150, { x: 512, y: 512 }, 6, 0, '#FF0000', 0.5);
     
     // Convert vector to raster
     const vectorLayer = await vectorCanvas.convertToLayer();

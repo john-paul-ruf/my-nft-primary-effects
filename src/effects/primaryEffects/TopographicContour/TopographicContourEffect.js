@@ -43,7 +43,11 @@ export class TopographicContourEffect extends LayerEffect {
                 height: randomNumber(0.5, 1),
                 spread: randomNumber(0.2, 0.6),
                 driftPhase: randomNumber(0, Math.PI * 2),
-                driftAmp: randomNumber(0.02, 0.08),
+                driftAmp: randomNumber(0.08, 0.2),
+                heightPhase: randomNumber(0, Math.PI * 2),
+                heightFreq: randomNumber(1, 3),
+                spreadPhase: randomNumber(0, Math.PI * 2),
+                spreadFreq: randomNumber(0.5, 2),
             });
         }
 
@@ -84,10 +88,12 @@ export class TopographicContourEffect extends LayerEffect {
         for (const peak of this.data.peaks) {
             const driftX = peak.driftAmp * Math.sin(peak.driftPhase + sweepPhase);
             const driftY = peak.driftAmp * Math.cos(peak.driftPhase * 1.3 + sweepPhase * 0.7);
+            const animHeight = peak.height * (0.6 + 0.3 * Math.sin(peak.heightPhase + sweepPhase * peak.heightFreq) + 0.15 * Math.sin(peak.heightPhase * 1.5 + sweepPhase * peak.heightFreq * 2.3));
+            const animSpread = peak.spread * (0.7 + 0.6 * Math.sin(peak.spreadPhase + sweepPhase * peak.spreadFreq));
             const dx = nx - (peak.x + driftX);
             const dy = ny - (peak.y + driftY);
             const dist = Math.sqrt(dx * dx + dy * dy);
-            elevation += peak.height * Math.exp(-(dist * dist) / (2 * peak.spread * peak.spread));
+            elevation += animHeight * Math.exp(-(dist * dist) / (2 * animSpread * animSpread));
         }
 
         return elevation;
@@ -95,12 +101,18 @@ export class TopographicContourEffect extends LayerEffect {
 
     #buildField(centerPos, currentFrame, numberOfFrames) {
         const res = this.data.resolution;
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const fieldRotAngle = progress * this.data.speed * 10 * Math.PI / 180;
+        const cosF = Math.cos(fieldRotAngle);
+        const sinF = Math.sin(fieldRotAngle);
         const field = [];
         for (let gy = 0; gy <= res; gy++) {
             const row = [];
             for (let gx = 0; gx <= res; gx++) {
-                const nx = (gx / res) * 2 - 1;
-                const ny = (gy / res) * 2 - 1;
+                const rawNx = (gx / res) * 2 - 1;
+                const rawNy = (gy / res) * 2 - 1;
+                const nx = rawNx * cosF - rawNy * sinF;
+                const ny = rawNx * sinF + rawNy * cosF;
                 row.push(this.#computeElevation(nx, ny, currentFrame, numberOfFrames));
             }
             field.push(row);

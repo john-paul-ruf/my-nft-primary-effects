@@ -43,6 +43,12 @@ export class SacredMandalaEffect extends LayerEffect {
                 radiusFactor: (r + 1) / concentricRings,
                 dotOffset: randomNumber(0, 360),
                 petalScale: 0.5 + randomNumber(0, 0.5),
+                rotationDirection: r % 2 === 0 ? 1 : -1,
+                rotationSpeedMult: 0.3 + randomNumber(0, 1.2),
+                radiusWobblePhase: randomNumber(0, Math.PI * 2),
+                radiusWobbleFreq: randomNumber(0.5, 2),
+                dotOrbitPhase: randomNumber(0, Math.PI * 2),
+                dotOrbitAmp: randomNumber(2, 10),
             });
         }
 
@@ -53,6 +59,9 @@ export class SacredMandalaEffect extends LayerEffect {
                 elongation: 1.5 + randomNumber(0, 2),
                 widthFactor: 0.15 + randomNumber(0, 0.2),
                 rotationOffset: randomNumber(0, 360 / symmetryFold),
+                openPhase: randomNumber(0, Math.PI * 2),
+                openFreq: randomNumber(1, 3),
+                rotationDirection: p % 2 === 0 ? 1 : -1,
             });
         }
 
@@ -76,6 +85,10 @@ export class SacredMandalaEffect extends LayerEffect {
             speed: getRandomIntInclusive(this.config.speed.lower, this.config.speed.upper),
             breathFrequency: getRandomIntInclusive(this.config.breathFrequency.lower, this.config.breathFrequency.upper),
             breathAmplitude: this.config.breathAmplitude,
+            useCurvedPetals: this.config.useCurvedPetals,
+            dashedRings: this.config.dashedRings,
+            intersectionDots: this.config.intersectionDots,
+            innerRosetteRings: getRandomIntInclusive(this.config.innerRosetteRings.lower, this.config.innerRosetteRings.upper),
             ringData,
             petalData,
             accentRange: {
@@ -93,36 +106,73 @@ export class SacredMandalaEffect extends LayerEffect {
     async #drawMandalaLayer(canvas, centerPos, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
         const progress = (currentFrame % numberOfFrames) / numberOfFrames;
         const rotAngle = progress * this.data.speed * 360;
-        const breath = findValue(1 - this.data.breathAmplitude, 1 + this.data.breathAmplitude, this.data.breathFrequency, numberOfFrames, currentFrame);
+        const breathAmp = Math.max(this.data.breathAmplitude, 0.15);
+        const breath = findValue(1 - breathAmp, 1 + breathAmp, this.data.breathFrequency, numberOfFrames, currentFrame);
 
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
         const strokeWidth = isUnderlay ? this.data.stroke + this.data.thickness + theAccentGaston : this.data.thickness;
 
-        for (const ring of this.data.ringData) {
-            const ringRadius = this.data.maxRadius * ring.radiusFactor * breath;
-            await canvas.drawRing2d(centerPos, ringRadius, strokeWidth, color, isUnderlay ? theAccentGaston : 0, color);
+        for (let ri = 0; ri < this.data.ringData.length; ri++) {
+            const ring = this.data.ringData[ri];
+            const ringBreath = 0.9 + 0.2 * Math.sin(ring.radiusFactor * Math.PI * 4 + progress * Math.PI * 2 * 2);
+            const radiusWobble = 1 + 0.1 * Math.sin(ring.radiusWobblePhase + progress * Math.PI * 2 * ring.radiusWobbleFreq);
+            const ringRadius = this.data.maxRadius * ring.radiusFactor * breath * ringBreath * radiusWobble;
 
+            if (this.data.dashedRings && ri % 2 === 1) {
+                await canvas.drawDashedRing2d(centerPos, ringRadius, strokeWidth, color, [8, 4]);
+            } else {
+                await canvas.drawRing2d(centerPos, ringRadius, strokeWidth, color, isUnderlay ? theAccentGaston : 0, color);
+            }
+
+            const ringRotAngle = rotAngle * ring.rotationDirection * ring.rotationSpeedMult;
             for (let d = 0; d < this.data.dotCount; d++) {
-                const dotAngle = (360 / this.data.dotCount) * d + ring.dotOffset + rotAngle;
-                const dotPos = findPointByAngleAndCircle(centerPos, dotAngle, ringRadius);
-                await canvas.drawRing2d(dotPos, this.data.dotRadius * breath, strokeWidth * 0.5, color, 0, color);
+                const dotAngle = (360 / this.data.dotCount) * d + ring.dotOffset + ringRotAngle;
+                const dotOrbitOffset = ring.dotOrbitAmp * Math.sin(ring.dotOrbitPhase + progress * Math.PI * 2 * 2 + d * 0.5);
+                const dotPos = findPointByAngleAndCircle(centerPos, dotAngle, ringRadius + dotOrbitOffset);
+                const dotPulse = 0.7 + 0.6 * Math.sin(ring.dotOrbitPhase + progress * Math.PI * 2 * 3 + d * 1.1);
+                await canvas.drawRing2d(dotPos, this.data.dotRadius * breath * dotPulse, strokeWidth * 0.5, color, 0, color);
+            }
+        }
+
+        if (this.data.innerRosetteRings > 0) {
+            const innerMax = this.data.maxRadius * 0.25 * breath;
+            for (let ir = 1; ir <= this.data.innerRosetteRings; ir++) {
+                const irRadius = innerMax * (ir / this.data.innerRosetteRings);
+                await canvas.drawDashedRing2d(centerPos, irRadius, strokeWidth * 0.5, color, [4, 3]);
             }
         }
 
         for (const petal of this.data.petalData) {
+            const openAnim = 0.65 + 0.25 * Math.sin(petal.openPhase + progress * Math.PI * 2 * petal.openFreq) + 0.15 * Math.sin(petal.openPhase * 1.4 + progress * Math.PI * 2 * petal.openFreq * 2.7);
             const petalRadius = this.data.maxRadius * petal.radiusFactor * breath;
+            const petalRotAngle = rotAngle * petal.rotationDirection;
 
             for (let s = 0; s < this.data.symmetryFold; s++) {
-                const baseAngle = (360 / this.data.symmetryFold) * s + petal.rotationOffset + rotAngle;
+                const baseAngle = (360 / this.data.symmetryFold) * s + petal.rotationOffset + petalRotAngle;
 
-                const tipPos = findPointByAngleAndCircle(centerPos, baseAngle, petalRadius * petal.elongation);
+                const tipPos = findPointByAngleAndCircle(centerPos, baseAngle, petalRadius * petal.elongation * openAnim);
                 const leftAngle = baseAngle - 90;
                 const rightAngle = baseAngle + 90;
-                const leftBase = findPointByAngleAndCircle(centerPos, leftAngle, petalRadius * petal.widthFactor);
-                const rightBase = findPointByAngleAndCircle(centerPos, rightAngle, petalRadius * petal.widthFactor);
+                const animatedWidth = petal.widthFactor * (0.6 + 0.8 * openAnim);
+                const leftBase = findPointByAngleAndCircle(centerPos, leftAngle, petalRadius * animatedWidth);
+                const rightBase = findPointByAngleAndCircle(centerPos, rightAngle, petalRadius * animatedWidth);
 
-                await canvas.drawLine2d(leftBase, tipPos, strokeWidth, color, 0, color);
-                await canvas.drawLine2d(rightBase, tipPos, strokeWidth, color, 0, color);
+                if (this.data.useCurvedPetals) {
+                    const bulge = petalRadius * petal.widthFactor * 1.2;
+                    const leftMid = {
+                        x: (leftBase.x + tipPos.x) / 2 + Math.cos((baseAngle - 45) * Math.PI / 180) * bulge,
+                        y: (leftBase.y + tipPos.y) / 2 + Math.sin((baseAngle - 45) * Math.PI / 180) * bulge,
+                    };
+                    const rightMid = {
+                        x: (rightBase.x + tipPos.x) / 2 + Math.cos((baseAngle + 45) * Math.PI / 180) * bulge,
+                        y: (rightBase.y + tipPos.y) / 2 + Math.sin((baseAngle + 45) * Math.PI / 180) * bulge,
+                    };
+                    await canvas.drawCubicBezier(leftBase, leftMid, leftMid, tipPos, strokeWidth, color, 0, color);
+                    await canvas.drawCubicBezier(rightBase, rightMid, rightMid, tipPos, strokeWidth, color, 0, color);
+                } else {
+                    await canvas.drawLine2d(leftBase, tipPos, strokeWidth, color, 0, color);
+                    await canvas.drawLine2d(rightBase, tipPos, strokeWidth, color, 0, color);
+                }
                 await canvas.drawLine2d(leftBase, rightBase, strokeWidth * 0.5, color, 0, color);
             }
         }
@@ -132,6 +182,14 @@ export class SacredMandalaEffect extends LayerEffect {
             const innerPos = findPointByAngleAndCircle(centerPos, spokeAngle, this.data.maxRadius * 0.1 * breath);
             const outerPos = findPointByAngleAndCircle(centerPos, spokeAngle, this.data.maxRadius * breath);
             await canvas.drawLine2d(innerPos, outerPos, strokeWidth * 0.5, color, 0, color);
+
+            if (this.data.intersectionDots) {
+                for (const ring of this.data.ringData) {
+                    const ringRadius = this.data.maxRadius * ring.radiusFactor * breath;
+                    const intPos = findPointByAngleAndCircle(centerPos, spokeAngle, ringRadius);
+                    await canvas.drawStar2d(intPos, this.data.dotRadius * breath * 1.2, this.data.dotRadius * breath * 0.5, 5, spokeAngle, strokeWidth * 0.4, color);
+                }
+            }
         }
 
         await canvas.drawPolygon2d(

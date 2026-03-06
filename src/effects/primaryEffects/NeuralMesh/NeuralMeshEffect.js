@@ -45,7 +45,10 @@ export class NeuralMeshEffect extends LayerEffect {
                 pulsePhase: randomNumber(0, Math.PI * 2),
                 driftPhaseX: randomNumber(0, Math.PI * 2),
                 driftPhaseY: randomNumber(0, Math.PI * 2),
-                driftAmp: randomNumber(2, 8),
+                driftAmp: randomNumber(5, 20),
+                driftSpeedMult: randomNumber(0.5, 2.5),
+                scalePhase: randomNumber(0, Math.PI * 2),
+                scaleFreq: randomNumber(1, 3),
             });
         }
 
@@ -72,6 +75,10 @@ export class NeuralMeshEffect extends LayerEffect {
                         to: dists[c].index,
                         weight: randomNumber(0.3, 1),
                         signalPhase: randomNumber(0, Math.PI * 2),
+                        weightOscPhase: randomNumber(0, Math.PI * 2),
+                        weightOscFreq: randomNumber(1, 3),
+                        bulgePhase: randomNumber(0, Math.PI * 2),
+                        bulgeAmp: randomNumber(0.1, 0.4),
                     });
                 }
             }
@@ -93,6 +100,10 @@ export class NeuralMeshEffect extends LayerEffect {
             fieldRadius,
             pulseFrequency: getRandomIntInclusive(this.config.pulseFrequency.lower, this.config.pulseFrequency.upper),
             speed: getRandomIntInclusive(this.config.speed.lower, this.config.speed.upper),
+            useCurvedConnections: this.config.useCurvedConnections,
+            showSignalPulse: this.config.showSignalPulse,
+            neuronStyle: this.config.neuronStyle,
+            signalPulseSize: getRandomIntInclusive(this.config.signalPulseSize.lower, this.config.signalPulseSize.upper),
             accentRange: {
                 lower: getRandomIntInclusive(this.config.accentRange.bottom.lower, this.config.accentRange.bottom.upper),
                 upper: getRandomIntInclusive(this.config.accentRange.top.lower, this.config.accentRange.top.upper),
@@ -107,8 +118,9 @@ export class NeuralMeshEffect extends LayerEffect {
 
     #getNeuronPos(neuron, centerPos, currentFrame, numberOfFrames) {
         const progress = (currentFrame % numberOfFrames) / numberOfFrames;
-        const driftX = neuron.driftAmp * Math.sin(neuron.driftPhaseX + progress * Math.PI * 2 * this.data.speed);
-        const driftY = neuron.driftAmp * Math.sin(neuron.driftPhaseY + progress * Math.PI * 2 * this.data.speed);
+        const speedMult = neuron.driftSpeedMult;
+        const driftX = neuron.driftAmp * Math.sin(neuron.driftPhaseX + progress * Math.PI * 2 * this.data.speed * speedMult);
+        const driftY = neuron.driftAmp * Math.sin(neuron.driftPhaseY + progress * Math.PI * 2 * this.data.speed * speedMult);
         return {
             x: centerPos.x + neuron.offsetX + driftX,
             y: centerPos.y + neuron.offsetY + driftY,
@@ -118,23 +130,53 @@ export class NeuralMeshEffect extends LayerEffect {
     async #drawMeshLayer(canvas, centerPos, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
         const lineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
-        const pulse = findValue(0.7, 1.3, this.data.pulseFrequency, numberOfFrames, currentFrame);
+        const pulse = findValue(0.6, 1.4, this.data.pulseFrequency, numberOfFrames, currentFrame);
+
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
 
         for (const conn of this.data.connections) {
             const fromPos = this.#getNeuronPos(this.data.neurons[conn.from], centerPos, currentFrame, numberOfFrames);
             const toPos = this.#getNeuronPos(this.data.neurons[conn.to], centerPos, currentFrame, numberOfFrames);
-            const connWidth = lineWidth * conn.weight;
+            const weightAnim = conn.weight * (0.6 + 0.8 * Math.sin(conn.weightOscPhase + progress * Math.PI * 2 * conn.weightOscFreq));
+            const connWidth = lineWidth * weightAnim;
 
-            await canvas.drawLine2d(fromPos, toPos, connWidth, color, isUnderlay ? theAccentGaston * 0.2 : 0, color);
+            if (this.data.useCurvedConnections) {
+                const dx = toPos.x - fromPos.x;
+                const dy = toPos.y - fromPos.y;
+                const bulgeScale = 0.25 + conn.bulgeAmp * Math.sin(conn.bulgePhase + progress * Math.PI * 2 * 2);
+                const perpX = -dy * bulgeScale;
+                const perpY = dx * bulgeScale;
+                const ctrl1 = {x: fromPos.x + dx * 0.3 + perpX, y: fromPos.y + dy * 0.3 + perpY};
+                const ctrl2 = {x: fromPos.x + dx * 0.7 - perpX, y: fromPos.y + dy * 0.7 - perpY};
+                await canvas.drawCubicBezier(fromPos, ctrl1, ctrl2, toPos, connWidth, color, isUnderlay ? theAccentGaston * 0.2 : 0, color);
+            } else {
+                await canvas.drawLine2d(fromPos, toPos, connWidth, color, isUnderlay ? theAccentGaston * 0.2 : 0, color);
+            }
+
+            if (this.data.showSignalPulse) {
+                const signalT = (progress * this.data.speed + conn.signalPhase / (Math.PI * 2)) % 1;
+                const sigX = fromPos.x + (toPos.x - fromPos.x) * signalT;
+                const sigY = fromPos.y + (toPos.y - fromPos.y) * signalT;
+                const sigSize = isUnderlay ? this.data.signalPulseSize + theAccentGaston * 0.5 : this.data.signalPulseSize;
+                await canvas.drawFilledCircle2d({x: sigX, y: sigY}, sigSize * conn.weight, color);
+            }
         }
 
         for (const neuron of this.data.neurons) {
             const pos = this.#getNeuronPos(neuron, centerPos, currentFrame, numberOfFrames);
-            const neuronPulse = 0.8 + 0.4 * Math.sin(neuron.pulsePhase + ((currentFrame % numberOfFrames) / numberOfFrames) * Math.PI * 2 * this.data.pulseFrequency);
-            const r = neuron.radius * neuronPulse * pulse;
+            const neuronPulse = 0.8 + 0.3 * Math.sin(neuron.pulsePhase + progress * Math.PI * 2 * this.data.pulseFrequency) + 0.15 * Math.sin(neuron.pulsePhase * 1.3 + progress * Math.PI * 2 * this.data.pulseFrequency * 2.7);
+            const neuronScale = 0.7 + 0.4 * Math.sin(neuron.scalePhase + progress * Math.PI * 2 * neuron.scaleFreq) + 0.2 * Math.sin(neuron.scalePhase * 1.5 + progress * Math.PI * 2 * neuron.scaleFreq * 1.9);
+            const r = neuron.radius * neuronPulse * pulse * neuronScale;
             const ringWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
 
-            await canvas.drawRing2d(pos, r, ringWidth, color, isUnderlay ? theAccentGaston * 0.5 : 0, color);
+            if (this.data.neuronStyle === 'filled') {
+                await canvas.drawFilledCircle2d(pos, r + (isUnderlay ? theAccentGaston * 0.5 : 0), color);
+            } else if (this.data.neuronStyle === 'star') {
+                const outerR = r + (isUnderlay ? theAccentGaston * 0.3 : 0);
+                await canvas.drawStar2d(pos, outerR, outerR * 0.4, 5, 0, ringWidth, color);
+            } else {
+                await canvas.drawRing2d(pos, r, ringWidth, color, isUnderlay ? theAccentGaston * 0.5 : 0, color);
+            }
         }
     }
 

@@ -18,7 +18,9 @@ export class VoronoiShatterConfig extends EffectConfig {
                     thickness = 2,
                     numberOfSeeds = new Range(12, 30),
                     fieldRadius = new PercentageRange(new PercentageShortestSide(0.2), new PercentageShortestSide(0.45)),
-                    cellEdgeResolution = 24,
+                    cellEdgeResolution = new Range(24, 24),
+                    showDelaunayEdges = false,
+                    edgeStyle = 'dots',
                     speed = new Range(1, 2),
                     driftAmplitude = new Range(5, 20),
                     pulseFrequency = new Range(1, 3),
@@ -38,6 +40,8 @@ export class VoronoiShatterConfig extends EffectConfig {
         this.numberOfSeeds = numberOfSeeds;
         this.fieldRadius = fieldRadius;
         this.cellEdgeResolution = cellEdgeResolution;
+        this.showDelaunayEdges = showDelaunayEdges;
+        this.edgeStyle = edgeStyle;
         this.speed = speed;
         this.driftAmplitude = driftAmplitude;
         this.pulseFrequency = pulseFrequency;

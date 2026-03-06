@@ -57,6 +57,14 @@ export class ToroidalFlowEffect extends LayerEffect {
                 wobblePhase,
                 wobbleAmp,
                 wobbleFreq,
+                breathPhase: randomNumber(0, Math.PI * 2),
+                breathFreq: getRandomIntInclusive(1, 3),
+                flowHeadPhase: randomNumber(0, 1),
+                flowSpeedMult: getRandomIntInclusive(1, 2),
+                spiralTightnessPhase: randomNumber(0, Math.PI * 2),
+                spiralTightnessAmp: randomNumber(0.3, 0.8),
+                thicknessPhase: randomNumber(0, Math.PI * 2),
+                thicknessFreq: getRandomIntInclusive(1, 3),
             });
         }
 
@@ -90,16 +98,19 @@ export class ToroidalFlowEffect extends LayerEffect {
     }
 
     #computeStreamPoints(stream, centerPos, currentFrame, numberOfFrames) {
-        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
-        const rotOffset = progress * this.data.speed * 360;
-        const breathe = findValue(0.95, 1.05, this.data.speed, numberOfFrames, currentFrame);
+        const progress = numberOfFrames <= 1 ? 0 : currentFrame / (numberOfFrames - 1);
+        const rotOffset = progress * this.data.speed * stream.flowSpeedMult * 360;
+        const globalBreathe = findValue(0.8, 1.2, this.data.speed, numberOfFrames, currentFrame);
+        const streamBreathe = 0.75 + 0.35 * Math.sin(stream.breathPhase + progress * Math.PI * 2 * stream.breathFreq) + 0.2 * Math.sin(stream.breathPhase * 1.5 + progress * Math.PI * 2 * stream.breathFreq * 2);
+        const breathe = globalBreathe * streamBreathe;
         const points = [];
         const tubeRadius = (this.data.outerRadius - this.data.innerRadius) / 2;
         const toroidCenter = this.data.innerRadius + tubeRadius;
+        const spiralMod = 1 + stream.spiralTightnessAmp * Math.sin(stream.spiralTightnessPhase + progress * Math.PI * 2 * 2);
 
         for (let p = 0; p < this.data.pointsPerStream; p++) {
             const t = p / this.data.pointsPerStream;
-            const majorAngle = stream.startAngle + rotOffset + t * 360 * this.data.spiralTightness;
+            const majorAngle = stream.startAngle + rotOffset + t * 360 * this.data.spiralTightness * spiralMod;
             const minorAngle = t * 360 * 2;
 
             const majorAngleRad = majorAngle * Math.PI / 180;
@@ -120,22 +131,24 @@ export class ToroidalFlowEffect extends LayerEffect {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
         const lineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
 
+        const progress = numberOfFrames <= 1 ? 0 : currentFrame / (numberOfFrames - 1);
         for (const stream of this.data.streamlines) {
             const points = this.#computeStreamPoints(stream, centerPos, currentFrame, numberOfFrames);
+            const thicknessMod = 0.6 + 0.8 * Math.sin(stream.thicknessPhase + progress * Math.PI * 2 * stream.thicknessFreq);
+            const streamLineWidth = lineWidth * thicknessMod;
 
-            for (let i = 1; i < points.length; i++) {
-                await canvas.drawLine2d(
-                    points[i - 1],
-                    points[i],
-                    lineWidth,
-                    color,
-                    isUnderlay ? theAccentGaston * 0.3 : 0,
-                    color
-                );
-            }
+            await canvas.drawSpline(
+                points,
+                0.5,
+                streamLineWidth,
+                color,
+                isUnderlay ? theAccentGaston * 0.3 : 0,
+                color,
+                false
+            );
         }
 
-        const breathe = findValue(0.95, 1.05, this.data.speed, numberOfFrames, currentFrame);
+        const breathe = findValue(0.8, 1.2, this.data.speed, numberOfFrames, currentFrame);
         await canvas.drawRing2d(centerPos, this.data.outerRadius * breathe, lineWidth * 0.5, color, isUnderlay ? theAccentGaston * 0.2 : 0, color);
         await canvas.drawRing2d(centerPos, this.data.innerRadius * breathe, lineWidth * 0.5, color, isUnderlay ? theAccentGaston * 0.2 : 0, color);
     }

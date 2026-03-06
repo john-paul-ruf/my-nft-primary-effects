@@ -42,8 +42,16 @@ export class VoronoiShatterEffect extends LayerEffect {
                 offsetY: Math.sin(angle * Math.PI / 180) * dist,
                 driftPhaseX: randomNumber(0, Math.PI * 2),
                 driftPhaseY: randomNumber(0, Math.PI * 2),
-                driftAmpX: randomNumber(driftAmplitude * 0.5, driftAmplitude),
-                driftAmpY: randomNumber(driftAmplitude * 0.5, driftAmplitude),
+                driftAmpX: randomNumber(driftAmplitude * 0.8, driftAmplitude * 1.5),
+                driftAmpY: randomNumber(driftAmplitude * 0.8, driftAmplitude * 1.5),
+                scalePhase: randomNumber(0, Math.PI * 2),
+                scaleFreq: randomNumber(1, 3),
+                orbitPhase: randomNumber(0, Math.PI * 2),
+                orbitSpeed: randomNumber(0.5, 2),
+                orbitRadius: randomNumber(5, 25),
+                driftSpeedMult: randomNumber(0.5, 2),
+                dotPulsePhase: randomNumber(0, Math.PI * 2),
+                dotPulseFreq: randomNumber(1, 3),
             });
         }
 
@@ -60,7 +68,9 @@ export class VoronoiShatterEffect extends LayerEffect {
             outerColor: this.config.outerColor.getColor(settings),
             seeds,
             fieldRadius,
-            cellEdgeResolution: this.config.cellEdgeResolution,
+            cellEdgeResolution: getRandomIntInclusive(this.config.cellEdgeResolution.lower, this.config.cellEdgeResolution.upper),
+            showDelaunayEdges: this.config.showDelaunayEdges,
+            edgeStyle: this.config.edgeStyle,
             speed: getRandomIntInclusive(this.config.speed.lower, this.config.speed.upper),
             pulseFrequency: getRandomIntInclusive(this.config.pulseFrequency.lower, this.config.pulseFrequency.upper),
             accentRange: {
@@ -76,15 +86,20 @@ export class VoronoiShatterEffect extends LayerEffect {
     }
 
     #getSeedPositions(centerPos, currentFrame, numberOfFrames) {
-        const pulse = findValue(0.95, 1.05, this.data.pulseFrequency, numberOfFrames, currentFrame);
+        const pulse = findValue(0.8, 1.2, this.data.pulseFrequency, numberOfFrames, currentFrame);
         const progress = (currentFrame % numberOfFrames) / numberOfFrames;
 
         return this.data.seeds.map(seed => {
-            const driftX = seed.driftAmpX * Math.sin(seed.driftPhaseX + progress * Math.PI * 2 * this.data.speed);
-            const driftY = seed.driftAmpY * Math.sin(seed.driftPhaseY + progress * Math.PI * 2 * this.data.speed);
+            const speedMult = seed.driftSpeedMult;
+            const driftX = seed.driftAmpX * Math.sin(seed.driftPhaseX + progress * Math.PI * 2 * this.data.speed * speedMult);
+            const driftY = seed.driftAmpY * Math.sin(seed.driftPhaseY + progress * Math.PI * 2 * this.data.speed * speedMult);
+            const orbitAngle = seed.orbitPhase + progress * Math.PI * 2 * seed.orbitSpeed;
+            const orbitDx = Math.cos(orbitAngle) * seed.orbitRadius;
+            const orbitDy = Math.sin(orbitAngle) * seed.orbitRadius;
+            const seedScale = 0.8 + 0.3 * Math.sin(seed.scalePhase + progress * Math.PI * 2 * seed.scaleFreq) + 0.15 * Math.sin(seed.scalePhase * 1.4 + progress * Math.PI * 2 * seed.scaleFreq * 2.3);
             return {
-                x: centerPos.x + (seed.offsetX + driftX) * pulse,
-                y: centerPos.y + (seed.offsetY + driftY) * pulse,
+                x: centerPos.x + (seed.offsetX + driftX + orbitDx) * pulse * seedScale,
+                y: centerPos.y + (seed.offsetY + driftY + orbitDy) * pulse * seedScale,
             };
         });
     }
@@ -136,12 +151,54 @@ export class VoronoiShatterEffect extends LayerEffect {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
         const dotSize = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
 
-        for (const edge of edges) {
-            await canvas.drawRing2d(edge, dotSize * 0.5, dotSize, color, isUnderlay ? theAccentGaston * 0.5 : 0, color);
+        if (this.data.edgeStyle === 'connected' && edges.length >= 3) {
+            const sorted = [...edges].sort((a, b) => {
+                const aa = Math.atan2(a.y - centerPos.y, a.x - centerPos.x);
+                const ba = Math.atan2(b.y - centerPos.y, b.x - centerPos.x);
+                return aa - ba;
+            });
+            await canvas.drawSpline(sorted, 0.5, dotSize, color, 0, color, true);
+        } else if (this.data.edgeStyle === 'rings') {
+            for (const edge of edges) {
+                await canvas.drawRing2d(edge, dotSize, dotSize * 0.5, color, isUnderlay ? theAccentGaston * 0.5 : 0, color);
+            }
+        } else {
+            for (const edge of edges) {
+                await canvas.drawRing2d(edge, dotSize * 0.5, dotSize, color, isUnderlay ? theAccentGaston * 0.5 : 0, color);
+            }
         }
 
-        const seedDotSize = isUnderlay ? this.data.thickness * 2 + theAccentGaston : this.data.thickness * 2;
-        for (const seed of seedPositions) {
+        if (this.data.showDelaunayEdges) {
+            const lineThickness = isUnderlay ? dotSize * 0.3 + theAccentGaston * 0.3 : dotSize * 0.3;
+            for (let i = 0; i < seedPositions.length; i++) {
+                let closest = {idx: -1, dist: Infinity};
+                let secondClosest = {idx: -1, dist: Infinity};
+                for (let j = 0; j < seedPositions.length; j++) {
+                    if (i === j) continue;
+                    const d = Math.sqrt((seedPositions[i].x - seedPositions[j].x) ** 2 + (seedPositions[i].y - seedPositions[j].y) ** 2);
+                    if (d < closest.dist) {
+                        secondClosest = {...closest};
+                        closest = {idx: j, dist: d};
+                    } else if (d < secondClosest.dist) {
+                        secondClosest = {idx: j, dist: d};
+                    }
+                }
+                if (closest.idx >= 0) {
+                    await canvas.drawLine2d(seedPositions[i], seedPositions[closest.idx], lineThickness, color, 0, color);
+                }
+                if (secondClosest.idx >= 0) {
+                    await canvas.drawLine2d(seedPositions[i], seedPositions[secondClosest.idx], lineThickness * 0.6, color, 0, color);
+                }
+            }
+        }
+
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const baseSeedDotSize = isUnderlay ? this.data.thickness * 2 + theAccentGaston : this.data.thickness * 2;
+        for (let si = 0; si < seedPositions.length; si++) {
+            const seed = seedPositions[si];
+            const seedData = this.data.seeds[si];
+            const dotPulse = 0.5 + 0.8 * Math.sin(seedData.dotPulsePhase + progress * Math.PI * 2 * seedData.dotPulseFreq);
+            const seedDotSize = baseSeedDotSize * dotPulse;
             await canvas.drawRing2d(seed, seedDotSize, seedDotSize * 0.5, color, isUnderlay ? theAccentGaston : 0, color);
         }
     }

@@ -41,16 +41,26 @@ export class CelticKnotworkEffect extends LayerEffect {
         const stepsPerLobe = 24;
         const totalSteps = lobeCount * stepsPerLobe;
 
+        const lobeAnimData = [];
+        for (let l = 0; l < lobeCount; l++) {
+            lobeAnimData.push({
+                depthPhase: randomNumber(0, Math.PI * 2),
+                depthFreq: getRandomIntInclusive(1, 3),
+            });
+        }
+
         for (let step = 0; step < totalSteps; step++) {
             const t = step / totalSteps;
             const angle = t * 360;
             const lobePhase = (step % stepsPerLobe) / stepsPerLobe;
             const lobeWave = Math.sin(lobePhase * Math.PI * 2);
+            const lobeIndex = Math.floor(step / stepsPerLobe);
             const r = knotRadius + lobeDepth * lobeWave;
             pathSegments.push({
                 angle,
                 radius: r,
                 lobeWave,
+                lobeIndex,
                 phaseOffset: randomNumber(0, 0.1),
             });
         }
@@ -60,6 +70,9 @@ export class CelticKnotworkEffect extends LayerEffect {
             bands.push({
                 offset: (b - (bandCount - 1) / 2) * weaveGap,
                 phaseShift: randomNumber(0, Math.PI * 2),
+                speedMult: getRandomIntInclusive(1, 2),
+                gapPhase: randomNumber(0, Math.PI * 2),
+                gapOscAmp: randomNumber(0.2, 0.6),
             });
         }
 
@@ -81,9 +94,14 @@ export class CelticKnotworkEffect extends LayerEffect {
             lobeDepth,
             pathSegments,
             bands,
+            lobeAnimData,
             totalSteps,
             speed: getRandomIntInclusive(this.config.speed.lower, this.config.speed.upper),
             pulseFrequency: getRandomIntInclusive(this.config.pulseFrequency.lower, this.config.pulseFrequency.upper),
+            showCrossingGap: this.config.showCrossingGap,
+            crossingGapSize: getRandomIntInclusive(this.config.crossingGapSize.lower, this.config.crossingGapSize.upper),
+            useSmoothPath: this.config.useSmoothPath,
+            lobeOrnament: this.config.lobeOrnament,
             accentRange: {
                 lower: getRandomIntInclusive(this.config.accentRange.bottom.lower, this.config.accentRange.bottom.upper),
                 upper: getRandomIntInclusive(this.config.accentRange.top.lower, this.config.accentRange.top.upper),
@@ -96,10 +114,13 @@ export class CelticKnotworkEffect extends LayerEffect {
         };
     }
 
-    #getPathPoint(segIdx, centerPos, rotAngle, pulse, bandOffset) {
+    #getPathPoint(segIdx, centerPos, rotAngle, pulse, bandOffset, progress) {
         const seg = this.data.pathSegments[segIdx % this.data.totalSteps];
+        const lobeAnim = this.data.lobeAnimData[seg.lobeIndex % this.data.lobeAnimData.length];
+        const lobeDepthMod = 0.6 + 0.5 * Math.sin(lobeAnim.depthPhase + progress * Math.PI * 2 * lobeAnim.depthFreq) + 0.3 * Math.sin(lobeAnim.depthPhase * 1.4 + progress * Math.PI * 2 * lobeAnim.depthFreq * 2);
         const angle = seg.angle + rotAngle;
-        const r = seg.radius * pulse;
+        const animatedRadius = this.data.knotRadius + this.data.lobeDepth * seg.lobeWave * lobeDepthMod;
+        const r = animatedRadius * pulse;
         const angleRad = (angle * Math.PI) / 180;
         const normalAngle = angleRad + Math.PI / 2;
         const basePos = findPointByAngleAndCircle(centerPos, angle, r);
@@ -113,34 +134,60 @@ export class CelticKnotworkEffect extends LayerEffect {
     async #drawKnotLayer(canvas, centerPos, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
         const lineWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
-        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+        const progress = numberOfFrames <= 1 ? 0 : currentFrame / (numberOfFrames - 1);
         const rotAngle = progress * this.data.speed * 360;
-        const pulse = findValue(0.95, 1.05, this.data.pulseFrequency, numberOfFrames, currentFrame);
+        const pulse = findValue(0.85, 1.15, this.data.pulseFrequency, numberOfFrames, currentFrame);
+
+        const stepsPerLobe = this.data.totalSteps / this.data.lobeCount;
 
         for (const band of this.data.bands) {
-            const weaveOffset = band.offset;
+            const weaveGapAnim = 1 + band.gapOscAmp * Math.sin(band.gapPhase + progress * Math.PI * 2 * 2);
+            const weaveOffset = band.offset * weaveGapAnim;
+            const bandWavePhase = band.phaseShift + progress * Math.PI * 2 * this.data.speed * band.speedMult;
 
-            for (let i = 0; i < this.data.totalSteps; i++) {
-                const next = (i + 1) % this.data.totalSteps;
+            if (this.data.useSmoothPath) {
+                const bandPoints = [];
+                for (let i = 0; i < this.data.totalSteps; i++) {
+                    const segWave = 1 + 0.2 * Math.sin(bandWavePhase + (i / this.data.totalSteps) * Math.PI * 2 * 3);
+                    bandPoints.push(this.#getPathPoint(i, centerPos, rotAngle, pulse * segWave, weaveOffset, progress));
+                }
+                await canvas.drawSpline(bandPoints, 0.5, lineWidth, color, isUnderlay ? theAccentGaston * 0.3 : 0, color, true);
+            } else {
+                for (let i = 0; i < this.data.totalSteps; i++) {
+                    const next = (i + 1) % this.data.totalSteps;
 
-                const crossingIndex = i % (this.data.lobeCount * 2);
-                const isOver = crossingIndex % 2 === 0;
+                    const crossingIndex = i % (this.data.lobeCount * 2);
+                    const isOver = crossingIndex % 2 === 0;
 
-                const p1 = this.#getPathPoint(i, centerPos, rotAngle, pulse, weaveOffset);
-                const p2 = this.#getPathPoint(next, centerPos, rotAngle, pulse, weaveOffset);
+                    if (this.data.showCrossingGap && !isOver) {
+                        const crossingMid = Math.floor(stepsPerLobe / 2);
+                        const distFromMid = Math.abs((i % stepsPerLobe) - crossingMid);
+                        if (distFromMid < this.data.crossingGapSize) continue;
+                    }
 
-                const segThickness = isOver ? lineWidth * 1.1 : lineWidth * 0.7;
-                const glow = isUnderlay ? theAccentGaston * (isOver ? 0.4 : 0.15) : 0;
+                    const segWave = 1 + 0.2 * Math.sin(bandWavePhase + (i / this.data.totalSteps) * Math.PI * 2 * 3);
+                    const p1 = this.#getPathPoint(i, centerPos, rotAngle, pulse * segWave, weaveOffset, progress);
+                    const p2 = this.#getPathPoint(next, centerPos, rotAngle, pulse * segWave, weaveOffset, progress);
 
-                await canvas.drawLine2d(p1, p2, segThickness, color, glow, color);
+                    const segThickness = isOver ? lineWidth * 1.1 : lineWidth * 0.7;
+                    const glow = isUnderlay ? theAccentGaston * (isOver ? 0.4 : 0.15) : 0;
+
+                    await canvas.drawLine2d(p1, p2, segThickness, color, glow, color);
+                }
             }
         }
 
         for (let i = 0; i < this.data.lobeCount; i++) {
             const angle = (360 / this.data.lobeCount) * i + rotAngle;
             const tipPos = findPointByAngleAndCircle(centerPos, angle, (this.data.knotRadius + this.data.lobeDepth) * pulse);
-            const dotSize = lineWidth * 1.5;
-            await canvas.drawEllipse2d(tipPos, dotSize, dotSize, 0, lineWidth * 0.4, color, isUnderlay ? theAccentGaston * 0.3 : 0, color);
+
+            if (this.data.lobeOrnament) {
+                const ornSize = lineWidth * 1.2;
+                await canvas.drawFilledCircle2d(tipPos, ornSize + (isUnderlay ? theAccentGaston * 0.3 : 0), color);
+            } else {
+                const dotSize = lineWidth * 1.5;
+                await canvas.drawRing2d(tipPos, dotSize, lineWidth * 0.4, color, isUnderlay ? theAccentGaston * 0.3 : 0, color);
+            }
         }
     }
 

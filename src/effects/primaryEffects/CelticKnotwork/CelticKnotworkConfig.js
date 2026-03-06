@@ -23,6 +23,10 @@ export class CelticKnotworkConfig extends EffectConfig {
                     lobeDepth = new Range(30, 80),
                     speed = new Range(1, 2),
                     pulseFrequency = new Range(1, 3),
+                    showCrossingGap = false,
+                    crossingGapSize = new Range(3, 6),
+                    useSmoothPath = false,
+                    lobeOrnament = false,
                     accentRange = new DynamicRange(new Range(1, 2), new Range(4, 8)),
                     blurRange = new DynamicRange(new Range(1, 2), new Range(3, 6)),
                     featherTimes = new Range(2, 6),
@@ -43,6 +47,10 @@ export class CelticKnotworkConfig extends EffectConfig {
         this.lobeDepth = lobeDepth;
         this.speed = speed;
         this.pulseFrequency = pulseFrequency;
+        this.showCrossingGap = showCrossingGap;
+        this.crossingGapSize = crossingGapSize;
+        this.useSmoothPath = useSmoothPath;
+        this.lobeOrnament = lobeOrnament;
         this.accentRange = accentRange;
         this.blurRange = blurRange;
         this.featherTimes = featherTimes;

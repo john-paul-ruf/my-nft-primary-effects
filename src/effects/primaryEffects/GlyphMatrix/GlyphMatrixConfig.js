@@ -23,6 +23,9 @@ export class GlyphMatrixConfig extends EffectConfig {
                     cascadeSpeed = new Range(1, 3),
                     glyphSegments = new Range(3, 6),
                     trailLength = new Range(4, 10),
+                    glyphCurveChance = 0,
+                    glyphArcChance = 0,
+                    glyphDotChance = 0,
                     accentRange = new DynamicRange(new Range(1, 2), new Range(3, 6)),
                     blurRange = new DynamicRange(new Range(1, 2), new Range(3, 6)),
                     featherTimes = new Range(2, 6),
@@ -43,6 +46,9 @@ export class GlyphMatrixConfig extends EffectConfig {
         this.cascadeSpeed = cascadeSpeed;
         this.glyphSegments = glyphSegments;
         this.trailLength = trailLength;
+        this.glyphCurveChance = glyphCurveChance;
+        this.glyphArcChance = glyphArcChance;
+        this.glyphDotChance = glyphDotChance;
         this.accentRange = accentRange;
         this.blurRange = blurRange;
         this.featherTimes = featherTimes;

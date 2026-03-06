@@ -24,6 +24,10 @@ export class PhyllotaxisSpiralConfig extends EffectConfig {
                     speed = new Range(1, 2),
                     breathFrequency = new Range(1, 3),
                     breathAmplitude = 0.06,
+                    dotShape = 'ring',
+                    polygonSides = new Range(5, 6),
+                    showSpiralArms = false,
+                    spiralArmCount = new Range(5, 8),
                     accentRange = new DynamicRange(new Range(1, 2), new Range(3, 7)),
                     blurRange = new DynamicRange(new Range(1, 2), new Range(3, 6)),
                     featherTimes = new Range(2, 6),
@@ -45,6 +49,10 @@ export class PhyllotaxisSpiralConfig extends EffectConfig {
         this.speed = speed;
         this.breathFrequency = breathFrequency;
         this.breathAmplitude = breathAmplitude;
+        this.dotShape = dotShape;
+        this.polygonSides = polygonSides;
+        this.showSpiralArms = showSpiralArms;
+        this.spiralArmCount = spiralArmCount;
         this.accentRange = accentRange;
         this.blurRange = blurRange;
         this.featherTimes = featherTimes;

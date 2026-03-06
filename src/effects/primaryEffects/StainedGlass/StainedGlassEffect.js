@@ -50,6 +50,9 @@ export class StainedGlassEffect extends LayerEffect {
                 vertices.push({
                     angle: vertAngle,
                     radiusFactor: jitter,
+                    wobblePhase: randomNumber(0, Math.PI * 2),
+                    wobbleAmp: randomNumber(0.05, 0.2),
+                    wobbleFreq: randomNumber(1, 3),
                 });
             }
 
@@ -59,6 +62,12 @@ export class StainedGlassEffect extends LayerEffect {
                 shardRadius,
                 vertices,
                 shimmerPhase,
+                orbitPhase: randomNumber(0, Math.PI * 2),
+                orbitSpeed: randomNumber(0.5, 2),
+                orbitRadius: randomNumber(3, 15),
+                rotationSpeed: randomNumber(-2, 2),
+                scalePhase: randomNumber(0, Math.PI * 2),
+                scaleFreq: randomNumber(1, 3),
             });
         }
 
@@ -78,6 +87,10 @@ export class StainedGlassEffect extends LayerEffect {
             cells,
             shimmerFrequency: getRandomIntInclusive(this.config.shimmerFrequency.lower, this.config.shimmerFrequency.upper),
             speed: getRandomIntInclusive(this.config.speed.lower, this.config.speed.upper),
+            fillCells: this.config.fillCells,
+            fillAlpha: getRandomIntInclusive(this.config.fillAlpha.lower, this.config.fillAlpha.upper) / 100,
+            showLeading: this.config.showLeading,
+            cellCornerDots: this.config.cellCornerDots,
             accentRange: {
                 lower: getRandomIntInclusive(this.config.accentRange.bottom.lower, this.config.accentRange.bottom.upper),
                 upper: getRandomIntInclusive(this.config.accentRange.top.lower, this.config.accentRange.top.upper),
@@ -93,38 +106,78 @@ export class StainedGlassEffect extends LayerEffect {
     async #drawGlassLayer(canvas, centerPos, currentFrame, numberOfFrames, isUnderlay, theAccentGaston) {
         const color = isUnderlay ? this.data.outerColor : this.data.innerColor;
         const lineWidth = isUnderlay ? this.data.leadingThickness + theAccentGaston : this.data.leadingThickness;
-        const shimmer = findValue(0.9, 1.1, this.data.shimmerFrequency, numberOfFrames, currentFrame);
+        const shimmer = findValue(0.85, 1.15, this.data.shimmerFrequency, numberOfFrames, currentFrame);
+        const progress = (currentFrame % numberOfFrames) / numberOfFrames;
+
+        const cellCenters = [];
 
         for (const cell of this.data.cells) {
             const cellAngleRad = cell.offsetAngle * Math.PI / 180;
+            const orbitAngle = cell.orbitPhase + progress * Math.PI * 2 * cell.orbitSpeed;
+            const orbitDx = Math.cos(orbitAngle) * cell.orbitRadius;
+            const orbitDy = Math.sin(orbitAngle) * cell.orbitRadius;
             const cellCenter = {
-                x: centerPos.x + Math.cos(cellAngleRad) * cell.offsetDist,
-                y: centerPos.y + Math.sin(cellAngleRad) * cell.offsetDist,
+                x: centerPos.x + Math.cos(cellAngleRad) * cell.offsetDist + orbitDx,
+                y: centerPos.y + Math.sin(cellAngleRad) * cell.offsetDist + orbitDy,
             };
+            cellCenters.push(cellCenter);
 
-            const scaledRadius = cell.shardRadius * shimmer;
+            const cellScale = 0.85 + 0.2 * Math.sin(cell.scalePhase + progress * Math.PI * 2 * cell.scaleFreq) + 0.12 * Math.sin(cell.scalePhase * 1.6 + progress * Math.PI * 2 * cell.scaleFreq * 2.5);
+            const scaledRadius = cell.shardRadius * shimmer * cellScale;
+            const cellRotation = progress * cell.rotationSpeed * 360;
             const verts = cell.vertices.map(v => {
-                const a = v.angle * Math.PI / 180;
+                const vertWobble = 1 + v.wobbleAmp * Math.sin(v.wobblePhase + progress * Math.PI * 2 * v.wobbleFreq);
+                const a = (v.angle + cellRotation) * Math.PI / 180;
                 return {
-                    x: cellCenter.x + Math.cos(a) * scaledRadius * v.radiusFactor,
-                    y: cellCenter.y + Math.sin(a) * scaledRadius * v.radiusFactor,
+                    x: cellCenter.x + Math.cos(a) * scaledRadius * v.radiusFactor * vertWobble,
+                    y: cellCenter.y + Math.sin(a) * scaledRadius * v.radiusFactor * vertWobble,
                 };
             });
 
+            if (this.data.fillCells && !isUnderlay) {
+                await canvas.drawFilledCustomPolygon2d(verts, color, this.data.fillAlpha);
+            }
+
             for (let i = 0; i < verts.length; i++) {
                 const next = (i + 1) % verts.length;
+                const edgeThick = 0.6 + 0.8 * Math.sin(cell.shimmerPhase + progress * Math.PI * 2 * 2 + i * 1.5);
                 await canvas.drawLine2d(
                     verts[i],
                     verts[next],
-                    lineWidth,
+                    lineWidth * edgeThick,
                     color,
                     isUnderlay ? theAccentGaston * 0.3 : 0,
                     color
                 );
             }
 
+            if (this.data.cellCornerDots) {
+                for (const v of verts) {
+                    await canvas.drawDot(v, lineWidth * 0.4, color);
+                }
+            }
+
             const innerDotSize = isUnderlay ? this.data.thickness + theAccentGaston * 0.5 : this.data.thickness;
             await canvas.drawRing2d(cellCenter, innerDotSize, innerDotSize * 0.3, color, 0, color);
+        }
+
+        if (this.data.showLeading && cellCenters.length >= 2) {
+            const leadWidth = lineWidth * 0.3;
+            for (let i = 0; i < cellCenters.length; i++) {
+                let closestDist = Infinity;
+                let closestIdx = -1;
+                for (let j = 0; j < cellCenters.length; j++) {
+                    if (i === j) continue;
+                    const d = Math.sqrt((cellCenters[i].x - cellCenters[j].x) ** 2 + (cellCenters[i].y - cellCenters[j].y) ** 2);
+                    if (d < closestDist) {
+                        closestDist = d;
+                        closestIdx = j;
+                    }
+                }
+                if (closestIdx >= 0) {
+                    await canvas.drawLine2d(cellCenters[i], cellCenters[closestIdx], leadWidth, color, 0, color);
+                }
+            }
         }
 
         await canvas.drawRing2d(centerPos, this.data.fieldRadius * shimmer, lineWidth, color, isUnderlay ? theAccentGaston * 0.2 : 0, color);
