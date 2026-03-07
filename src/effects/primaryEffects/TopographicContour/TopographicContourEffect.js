@@ -45,9 +45,9 @@ export class TopographicContourEffect extends LayerEffect {
                 driftPhase: randomNumber(0, Math.PI * 2),
                 driftAmp: randomNumber(0.08, 0.2),
                 heightPhase: randomNumber(0, Math.PI * 2),
-                heightFreq: randomNumber(1, 3),
+                heightFreq: getRandomIntInclusive(1, 3),
                 spreadPhase: randomNumber(0, Math.PI * 2),
-                spreadFreq: randomNumber(0.5, 2),
+                spreadFreq: getRandomIntInclusive(1, 2),
             });
         }
 
@@ -87,8 +87,8 @@ export class TopographicContourEffect extends LayerEffect {
 
         for (const peak of this.data.peaks) {
             const driftX = peak.driftAmp * Math.sin(peak.driftPhase + sweepPhase);
-            const driftY = peak.driftAmp * Math.cos(peak.driftPhase * 1.3 + sweepPhase * 0.7);
-            const animHeight = peak.height * (0.6 + 0.3 * Math.sin(peak.heightPhase + sweepPhase * peak.heightFreq) + 0.15 * Math.sin(peak.heightPhase * 1.5 + sweepPhase * peak.heightFreq * 2.3));
+            const driftY = peak.driftAmp * Math.cos(peak.driftPhase * 1.3 + sweepPhase);
+            const animHeight = peak.height * (0.6 + 0.3 * Math.sin(peak.heightPhase + sweepPhase * peak.heightFreq) + 0.15 * Math.sin(peak.heightPhase * 1.5 + sweepPhase * peak.heightFreq * 2));
             const animSpread = peak.spread * (0.7 + 0.6 * Math.sin(peak.spreadPhase + sweepPhase * peak.spreadFreq));
             const dx = nx - (peak.x + driftX);
             const dy = ny - (peak.y + driftY);
@@ -102,7 +102,7 @@ export class TopographicContourEffect extends LayerEffect {
     #buildField(centerPos, currentFrame, numberOfFrames) {
         const res = this.data.resolution;
         const progress = (currentFrame % numberOfFrames) / numberOfFrames;
-        const fieldRotAngle = progress * this.data.speed * 10 * Math.PI / 180;
+        const fieldRotAngle = progress * this.data.speed * 360 * Math.PI / 180;
         const cosF = Math.cos(fieldRotAngle);
         const sinF = Math.sin(fieldRotAngle);
         const field = [];

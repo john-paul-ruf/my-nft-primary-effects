@@ -73,7 +73,7 @@ export class PenroseTilingEffect extends LayerEffect {
                         wobblePhase: randomNumber(0, Math.PI * 2),
                         wobbleAmp: randomNumber(0.02, 0.08),
                         thicknessPhase: randomNumber(0, Math.PI * 2),
-                        thicknessFreq: randomNumber(1, 3),
+                        thicknessFreq: getRandomIntInclusive(1, 3),
                         lengthPhase: randomNumber(0, Math.PI * 2),
                     });
                 }
@@ -149,7 +149,7 @@ export class PenroseTilingEffect extends LayerEffect {
         const wavePhase = progress * Math.PI * 2 * this.data.speed;
 
         for (const edge of this.data.edges) {
-            const radialWave = 0.8 + 0.3 * Math.sin(wavePhase - edge.dist * 8) + 0.15 * Math.sin(wavePhase * 1.7 - edge.dist * 12 + edge.wobblePhase);
+            const radialWave = 0.8 + 0.3 * Math.sin(wavePhase - edge.dist * 8) + 0.15 * Math.sin(wavePhase * 2 - edge.dist * 12 + edge.wobblePhase);
             const edgeWobble = 1 + edge.wobbleAmp * Math.sin(edge.wobblePhase + wavePhase * 2);
             const edgePulse = pulse * radialWave * edgeWobble;
 

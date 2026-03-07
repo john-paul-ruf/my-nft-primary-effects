@@ -44,9 +44,9 @@ export class SacredMandalaEffect extends LayerEffect {
                 dotOffset: randomNumber(0, 360),
                 petalScale: 0.5 + randomNumber(0, 0.5),
                 rotationDirection: r % 2 === 0 ? 1 : -1,
-                rotationSpeedMult: 0.3 + randomNumber(0, 1.2),
+                rotationSpeedMult: getRandomIntInclusive(1, 2),
                 radiusWobblePhase: randomNumber(0, Math.PI * 2),
-                radiusWobbleFreq: randomNumber(0.5, 2),
+                radiusWobbleFreq: getRandomIntInclusive(1, 2),
                 dotOrbitPhase: randomNumber(0, Math.PI * 2),
                 dotOrbitAmp: randomNumber(2, 10),
             });
@@ -60,7 +60,7 @@ export class SacredMandalaEffect extends LayerEffect {
                 widthFactor: 0.15 + randomNumber(0, 0.2),
                 rotationOffset: randomNumber(0, 360 / symmetryFold),
                 openPhase: randomNumber(0, Math.PI * 2),
-                openFreq: randomNumber(1, 3),
+                openFreq: getRandomIntInclusive(1, 3),
                 rotationDirection: p % 2 === 0 ? 1 : -1,
             });
         }
@@ -143,7 +143,7 @@ export class SacredMandalaEffect extends LayerEffect {
         }
 
         for (const petal of this.data.petalData) {
-            const openAnim = 0.65 + 0.25 * Math.sin(petal.openPhase + progress * Math.PI * 2 * petal.openFreq) + 0.15 * Math.sin(petal.openPhase * 1.4 + progress * Math.PI * 2 * petal.openFreq * 2.7);
+            const openAnim = 0.65 + 0.25 * Math.sin(petal.openPhase + progress * Math.PI * 2 * petal.openFreq) + 0.15 * Math.sin(petal.openPhase * 1.4 + progress * Math.PI * 2 * petal.openFreq * 3);
             const petalRadius = this.data.maxRadius * petal.radiusFactor * breath;
             const petalRotAngle = rotAngle * petal.rotationDirection;
 

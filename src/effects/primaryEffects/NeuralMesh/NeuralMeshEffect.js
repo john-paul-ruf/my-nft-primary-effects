@@ -46,9 +46,9 @@ export class NeuralMeshEffect extends LayerEffect {
                 driftPhaseX: randomNumber(0, Math.PI * 2),
                 driftPhaseY: randomNumber(0, Math.PI * 2),
                 driftAmp: randomNumber(5, 20),
-                driftSpeedMult: randomNumber(0.5, 2.5),
+                driftSpeedMult: getRandomIntInclusive(1, 2),
                 scalePhase: randomNumber(0, Math.PI * 2),
-                scaleFreq: randomNumber(1, 3),
+                scaleFreq: getRandomIntInclusive(1, 3),
             });
         }
 
@@ -76,7 +76,7 @@ export class NeuralMeshEffect extends LayerEffect {
                         weight: randomNumber(0.3, 1),
                         signalPhase: randomNumber(0, Math.PI * 2),
                         weightOscPhase: randomNumber(0, Math.PI * 2),
-                        weightOscFreq: randomNumber(1, 3),
+                        weightOscFreq: getRandomIntInclusive(1, 3),
                         bulgePhase: randomNumber(0, Math.PI * 2),
                         bulgeAmp: randomNumber(0.1, 0.4),
                     });
@@ -164,8 +164,8 @@ export class NeuralMeshEffect extends LayerEffect {
 
         for (const neuron of this.data.neurons) {
             const pos = this.#getNeuronPos(neuron, centerPos, currentFrame, numberOfFrames);
-            const neuronPulse = 0.8 + 0.3 * Math.sin(neuron.pulsePhase + progress * Math.PI * 2 * this.data.pulseFrequency) + 0.15 * Math.sin(neuron.pulsePhase * 1.3 + progress * Math.PI * 2 * this.data.pulseFrequency * 2.7);
-            const neuronScale = 0.7 + 0.4 * Math.sin(neuron.scalePhase + progress * Math.PI * 2 * neuron.scaleFreq) + 0.2 * Math.sin(neuron.scalePhase * 1.5 + progress * Math.PI * 2 * neuron.scaleFreq * 1.9);
+            const neuronPulse = 0.8 + 0.3 * Math.sin(neuron.pulsePhase + progress * Math.PI * 2 * this.data.pulseFrequency) + 0.15 * Math.sin(neuron.pulsePhase * 1.3 + progress * Math.PI * 2 * this.data.pulseFrequency * 3);
+            const neuronScale = 0.7 + 0.4 * Math.sin(neuron.scalePhase + progress * Math.PI * 2 * neuron.scaleFreq) + 0.2 * Math.sin(neuron.scalePhase * 1.5 + progress * Math.PI * 2 * neuron.scaleFreq * 2);
             const r = neuron.radius * neuronPulse * pulse * neuronScale;
             const ringWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
 

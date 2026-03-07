@@ -91,7 +91,7 @@ export class GlyphMatrixEffect extends LayerEffect {
                 cascadeSpeedFactor: getRandomIntInclusive(1, 3),
                 swayPhase: randomNumber(0, Math.PI * 2),
                 swayAmp: randomNumber(3, 15),
-                swayFreq: randomNumber(1, 3),
+                swayFreq: getRandomIntInclusive(1, 3),
             });
         }
 
@@ -156,7 +156,7 @@ export class GlyphMatrixEffect extends LayerEffect {
                 const glyphIdx = r % col.glyphs.length;
                 const glyph = col.glyphs[glyphIdx];
                 const wobbleOffset = glyph.wobbleAmp * Math.sin(glyph.wobblePhase + progress * Math.PI * 2 * 3) * this.data.glyphSize;
-                const glyphScale = 0.8 + 0.3 * Math.sin(glyph.scalePhase + progress * Math.PI * 2 * 2) + 0.15 * Math.sin(glyph.scalePhase * 1.6 + progress * Math.PI * 2 * 3.3);
+                const glyphScale = 0.8 + 0.3 * Math.sin(glyph.scalePhase + progress * Math.PI * 2 * 2) + 0.15 * Math.sin(glyph.scalePhase * 1.6 + progress * Math.PI * 2 * 3);
                 const cellX = colX + wobbleOffset;
                 const cellY = startY + r * this.data.glyphSize + this.data.glyphSize / 2;
 

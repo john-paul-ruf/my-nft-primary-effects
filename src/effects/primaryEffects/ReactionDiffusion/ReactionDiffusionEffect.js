@@ -46,7 +46,7 @@ export class ReactionDiffusionEffect extends LayerEffect {
                 driftPhaseX: randomNumber(0, Math.PI * 2),
                 driftPhaseY: randomNumber(0, Math.PI * 2),
                 driftAmp: randomNumber(0.05, 0.25),
-                driftFreq: randomNumber(0.5, 2),
+                driftFreq: getRandomIntInclusive(1, 2),
             });
         }
 
@@ -58,7 +58,7 @@ export class ReactionDiffusionEffect extends LayerEffect {
                 phaseX: randomNumber(0, Math.PI * 2),
                 phaseY: randomNumber(0, Math.PI * 2),
                 weight: randomNumber(0.2, 1) / (i + 1),
-                timeSpeedMult: 0.5 + randomNumber(0, 1.5),
+                timeSpeedMult: getRandomIntInclusive(1, 2),
             });
         }
 
@@ -107,7 +107,7 @@ export class ReactionDiffusionEffect extends LayerEffect {
                 let value = 0;
                 for (const seed of this.data.seeds) {
                     const seedDriftX = seed.driftAmp * Math.sin(seed.driftPhaseX + timePhase * seed.driftFreq);
-                    const seedDriftY = seed.driftAmp * Math.sin(seed.driftPhaseY + timePhase * seed.driftFreq * 0.7);
+                    const seedDriftY = seed.driftAmp * Math.sin(seed.driftPhaseY + timePhase * seed.driftFreq);
                     const dx = nx - (seed.x + seedDriftX);
                     const dy = ny - (seed.y + seedDriftY);
                     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -116,7 +116,7 @@ export class ReactionDiffusionEffect extends LayerEffect {
 
                 for (const h of this.data.harmonics) {
                     const hTimePhase = timePhase * h.timeSpeedMult;
-                    const compoundPhase = hTimePhase + 0.3 * Math.sin(hTimePhase * 1.7 + h.phaseX);
+                    const compoundPhase = hTimePhase + 0.3 * Math.sin(hTimePhase * 2 + h.phaseX);
                     value += h.weight * Math.sin(nx * h.freqX * Math.PI + h.phaseX + compoundPhase)
                         * Math.cos(ny * h.freqY * Math.PI + h.phaseY + compoundPhase);
                 }

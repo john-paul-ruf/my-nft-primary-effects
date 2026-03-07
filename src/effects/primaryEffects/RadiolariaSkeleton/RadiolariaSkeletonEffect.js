@@ -49,7 +49,7 @@ export class RadiolariaSkeletonEffect extends LayerEffect {
                 wobblePhase: randomNumber(0, Math.PI * 2),
                 wobbleAmp: randomNumber(0.05, 0.15),
                 rotationDirection: s % 2 === 0 ? 1 : -1,
-                rotationSpeedMult: 0.5 + randomNumber(0, 1),
+                rotationSpeedMult: getRandomIntInclusive(1, 2),
             });
         }
 
@@ -62,11 +62,11 @@ export class RadiolariaSkeletonEffect extends LayerEffect {
                 thicknessFactor: 0.5 + randomNumber(0, 0.5),
                 barbs: getRandomIntInclusive(0, 3),
                 extensionPhase: randomNumber(0, Math.PI * 2),
-                extensionFreq: randomNumber(1, 3),
+                extensionFreq: getRandomIntInclusive(1, 3),
                 wobbleAnglePhase: randomNumber(0, Math.PI * 2),
                 wobbleAngleAmp: randomNumber(3, 12),
                 barbLengthPhase: randomNumber(0, Math.PI * 2),
-                barbLengthFreq: randomNumber(1, 3),
+                barbLengthFreq: getRandomIntInclusive(1, 3),
             });
         }
 
@@ -110,7 +110,7 @@ export class RadiolariaSkeletonEffect extends LayerEffect {
 
         for (const shell of this.data.shells) {
             const r = this.data.shellRadius * shell.radiusFactor * breathe;
-            const wobble = shell.wobbleAmp * Math.sin(shell.wobblePhase + progress * Math.PI * 2 * this.data.breathFrequency) + shell.wobbleAmp * 0.5 * Math.sin(shell.wobblePhase * 1.7 + progress * Math.PI * 2 * this.data.breathFrequency * 2.3);
+            const wobble = shell.wobbleAmp * Math.sin(shell.wobblePhase + progress * Math.PI * 2 * this.data.breathFrequency) + shell.wobbleAmp * 0.5 * Math.sin(shell.wobblePhase * 1.7 + progress * Math.PI * 2 * this.data.breathFrequency * 2);
             const shellR = r * (1 + wobble);
             const shellRotAngle = rotAngle * shell.rotationDirection * shell.rotationSpeedMult;
 

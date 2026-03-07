@@ -45,11 +45,11 @@ export class PhyllotaxisSpiralEffect extends LayerEffect {
                 radiusJitter: randomNumber(0.9, 1.1),
                 sizeJitter: randomNumber(0.8, 1.2),
                 pulsePhase: randomNumber(0, Math.PI * 2),
-                pulseFreq: randomNumber(1, 3),
+                pulseFreq: getRandomIntInclusive(1, 3),
                 angularDriftPhase: randomNumber(0, Math.PI * 2),
                 angularDriftAmp: randomNumber(2, 12),
                 radialPushPhase: randomNumber(0, Math.PI * 2),
-                radialPushFreq: randomNumber(0.5, 2),
+                radialPushFreq: getRandomIntInclusive(1, 2),
             });
         }
 
@@ -120,7 +120,7 @@ export class PhyllotaxisSpiralEffect extends LayerEffect {
             const pos = {x: px, y: py};
             dotPositions.push(pos);
 
-            const dotPulse = 0.7 + 0.4 * Math.sin(dot.pulsePhase + progress * Math.PI * 2 * dot.pulseFreq) + 0.2 * Math.sin(dot.pulsePhase * 1.5 + progress * Math.PI * 2 * dot.pulseFreq * 2.5);
+            const dotPulse = 0.7 + 0.4 * Math.sin(dot.pulsePhase + progress * Math.PI * 2 * dot.pulseFreq) + 0.2 * Math.sin(dot.pulsePhase * 1.5 + progress * Math.PI * 2 * dot.pulseFreq * 2);
             const dotRadius = (this.data.dotMinRadius + (this.data.dotMaxRadius - this.data.dotMinRadius) * t) * dot.sizeJitter * breathe * dotPulse;
             const ringWidth = isUnderlay ? this.data.thickness + theAccentGaston : this.data.thickness;
             const accentSz = isUnderlay ? theAccentGaston * 0.3 : 0;

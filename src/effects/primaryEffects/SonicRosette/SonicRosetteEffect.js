@@ -54,9 +54,9 @@ export class SonicRosetteEffect extends LayerEffect {
                 amplitudeScale: 0.6 + randomNumber(0, 0.8),
                 rotationOffset: randomNumber(0, 360),
                 harmonics,
-                rotationSpeedMult: randomNumber(0.3, 2.5),
+                rotationSpeedMult: getRandomIntInclusive(1, 2),
                 breathPhase: randomNumber(0, Math.PI * 2),
-                breathFreqMult: randomNumber(0.5, 2),
+                breathFreqMult: getRandomIntInclusive(1, 2),
                 thicknessPhase: randomNumber(0, Math.PI * 2),
             });
         }
@@ -99,7 +99,7 @@ export class SonicRosetteEffect extends LayerEffect {
         const harmonicPhaseShift = progress * Math.PI * 2 * this.data.speed;
 
         for (const roseLayer of this.data.roseLayers) {
-            const layerBreath = 0.7 + 0.4 * Math.sin(roseLayer.breathPhase + progress * Math.PI * 2 * roseLayer.breathFreqMult * 2) + 0.2 * Math.sin(roseLayer.breathPhase * 1.5 + progress * Math.PI * 2 * roseLayer.breathFreqMult * 3.3);
+            const layerBreath = 0.7 + 0.4 * Math.sin(roseLayer.breathPhase + progress * Math.PI * 2 * roseLayer.breathFreqMult * 2) + 0.2 * Math.sin(roseLayer.breathPhase * 1.5 + progress * Math.PI * 2 * roseLayer.breathFreqMult * 3);
             const amp = this.data.amplitude * roseLayer.amplitudeScale * breathe * layerBreath;
             const maxTheta = Math.PI * 2 * roseLayer.d;
             const layerRotAngle = rotAngle * roseLayer.rotationSpeedMult;
@@ -112,7 +112,7 @@ export class SonicRosetteEffect extends LayerEffect {
                 let r2 = amp * Math.cos(roseLayer.k * t2);
 
                 for (const harmonic of roseLayer.harmonics) {
-                    const animPhase = harmonic.phase + harmonicPhaseShift * harmonic.frequency * 0.3 * roseLayer.rotationSpeedMult;
+                    const animPhase = harmonic.phase + harmonicPhaseShift * harmonic.frequency * roseLayer.rotationSpeedMult;
                     r1 += harmonic.amplitude * Math.sin(harmonic.frequency * t1 + animPhase);
                     r2 += harmonic.amplitude * Math.sin(harmonic.frequency * t2 + animPhase);
                 }

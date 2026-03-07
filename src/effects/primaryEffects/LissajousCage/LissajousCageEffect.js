@@ -45,11 +45,11 @@ export class LissajousCageEffect extends LayerEffect {
                 phaseB: randomNumber(0, Math.PI * 2),
                 phaseC: randomNumber(0, Math.PI * 2),
                 amplitudeScale: 0.6 + randomNumber(0, 0.8),
-                tumbleSpeedMult: randomNumber(0.4, 2.5),
+                tumbleSpeedMult: getRandomIntInclusive(1, 2),
                 depthScalePhase: randomNumber(0, Math.PI * 2),
-                depthScaleFreq: randomNumber(0.5, 2),
+                depthScaleFreq: getRandomIntInclusive(1, 2),
                 thicknessPhase: randomNumber(0, Math.PI * 2),
-                thicknessFreq: randomNumber(1, 3),
+                thicknessFreq: getRandomIntInclusive(1, 3),
             });
         }
 
@@ -102,12 +102,12 @@ export class LissajousCageEffect extends LayerEffect {
 
         const progress = (currentFrame % numberOfFrames) / numberOfFrames;
         const tumblePhase = progress * this.data.speed * Math.PI * 2;
-        const baseTumbleX = findValue(-0.4, 0.4, this.data.tumbleFrequency, numberOfFrames, currentFrame) + tumblePhase * 0.3;
+        const baseTumbleX = findValue(-0.4, 0.4, this.data.tumbleFrequency, numberOfFrames, currentFrame) + tumblePhase;
         const baseTumbleY = tumblePhase;
-        const perspectiveBreath = 500 + 200 * Math.sin(progress * Math.PI * 2 * this.data.speed * 0.7) + 80 * Math.sin(progress * Math.PI * 2 * this.data.speed * 1.9 + 1.3);
+        const perspectiveBreath = 500 + 200 * Math.sin(progress * Math.PI * 2 * this.data.speed) + 80 * Math.sin(progress * Math.PI * 2 * this.data.speed * 2 + 1.3);
 
         for (const curve of this.data.curves) {
-            const ampBreath = 0.8 + 0.3 * Math.sin(curve.phaseA + progress * Math.PI * 2 * 2) + 0.15 * Math.sin(curve.phaseB + progress * Math.PI * 2 * 3.7);
+            const ampBreath = 0.8 + 0.3 * Math.sin(curve.phaseA + progress * Math.PI * 2 * 2) + 0.15 * Math.sin(curve.phaseB + progress * Math.PI * 2 * 4);
             const amp = this.data.amplitude * curve.amplitudeScale * ampBreath;
             const phaseShift = progress * Math.PI * 2 * this.data.speed * curve.tumbleSpeedMult;
             const curveDepthScale = (this.data.depthScale / 100) * (0.7 + 0.6 * Math.sin(curve.depthScalePhase + progress * Math.PI * 2 * curve.depthScaleFreq));
@@ -119,12 +119,12 @@ export class LissajousCageEffect extends LayerEffect {
                 const t2 = ((i + 1) / this.data.resolution) * Math.PI * 2;
 
                 const x1_3d = amp * Math.sin(curve.freqA * t1 + curve.phaseA + phaseShift);
-                const y1_3d = amp * Math.sin(curve.freqB * t1 + curve.phaseB + phaseShift * 0.7);
-                const z1_3d = amp * Math.sin(curve.freqC * t1 + curve.phaseC + phaseShift * 1.3) * curveDepthScale;
+                const y1_3d = amp * Math.sin(curve.freqB * t1 + curve.phaseB + phaseShift);
+                const z1_3d = amp * Math.sin(curve.freqC * t1 + curve.phaseC + phaseShift * 2) * curveDepthScale;
 
                 const x2_3d = amp * Math.sin(curve.freqA * t2 + curve.phaseA + phaseShift);
-                const y2_3d = amp * Math.sin(curve.freqB * t2 + curve.phaseB + phaseShift * 0.7);
-                const z2_3d = amp * Math.sin(curve.freqC * t2 + curve.phaseC + phaseShift * 1.3) * curveDepthScale;
+                const y2_3d = amp * Math.sin(curve.freqB * t2 + curve.phaseB + phaseShift);
+                const z2_3d = amp * Math.sin(curve.freqC * t2 + curve.phaseC + phaseShift * 2) * curveDepthScale;
 
                 const p1 = this.#project3d(x1_3d, y1_3d, z1_3d, tumbleX, tumbleY, perspectiveBreath);
                 const p2 = this.#project3d(x2_3d, y2_3d, z2_3d, tumbleX, tumbleY, perspectiveBreath);

@@ -52,7 +52,7 @@ export class StainedGlassEffect extends LayerEffect {
                     radiusFactor: jitter,
                     wobblePhase: randomNumber(0, Math.PI * 2),
                     wobbleAmp: randomNumber(0.05, 0.2),
-                    wobbleFreq: randomNumber(1, 3),
+                    wobbleFreq: getRandomIntInclusive(1, 3),
                 });
             }
 
@@ -63,11 +63,11 @@ export class StainedGlassEffect extends LayerEffect {
                 vertices,
                 shimmerPhase,
                 orbitPhase: randomNumber(0, Math.PI * 2),
-                orbitSpeed: randomNumber(0.5, 2),
+                orbitSpeed: getRandomIntInclusive(1, 2),
                 orbitRadius: randomNumber(3, 15),
-                rotationSpeed: randomNumber(-2, 2),
+                rotationSpeed: getRandomIntInclusive(-2, 2),
                 scalePhase: randomNumber(0, Math.PI * 2),
-                scaleFreq: randomNumber(1, 3),
+                scaleFreq: getRandomIntInclusive(1, 3),
             });
         }
 
@@ -122,7 +122,7 @@ export class StainedGlassEffect extends LayerEffect {
             };
             cellCenters.push(cellCenter);
 
-            const cellScale = 0.85 + 0.2 * Math.sin(cell.scalePhase + progress * Math.PI * 2 * cell.scaleFreq) + 0.12 * Math.sin(cell.scalePhase * 1.6 + progress * Math.PI * 2 * cell.scaleFreq * 2.5);
+            const cellScale = 0.85 + 0.2 * Math.sin(cell.scalePhase + progress * Math.PI * 2 * cell.scaleFreq) + 0.12 * Math.sin(cell.scalePhase * 1.6 + progress * Math.PI * 2 * cell.scaleFreq * 2);
             const scaledRadius = cell.shardRadius * shimmer * cellScale;
             const cellRotation = progress * cell.rotationSpeed * 360;
             const verts = cell.vertices.map(v => {

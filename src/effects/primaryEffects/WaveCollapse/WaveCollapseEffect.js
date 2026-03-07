@@ -83,7 +83,7 @@ export class WaveCollapseEffect extends LayerEffect {
                     patternIdx,
                     collapseOrder,
                     rotation: getRandomIntInclusive(0, 3) * 90,
-                    rotationSpeed: randomNumber(-1, 1),
+                    rotationSpeed: getRandomIntInclusive(-1, 1),
                     scalePhase: randomNumber(0, Math.PI * 2),
                     jitterPhaseX: randomNumber(0, Math.PI * 2),
                     jitterPhaseY: randomNumber(0, Math.PI * 2),
@@ -142,7 +142,7 @@ export class WaveCollapseEffect extends LayerEffect {
             const collapsed = distFromWave < 0.5;
 
             const cellRotation = progress * cell.rotationSpeed * 360;
-            const cellScale = 0.8 + 0.3 * Math.sin(cell.scalePhase + progress * Math.PI * 2 * 2) + 0.15 * Math.sin(cell.scalePhase * 1.5 + progress * Math.PI * 2 * 3.7);
+            const cellScale = 0.8 + 0.3 * Math.sin(cell.scalePhase + progress * Math.PI * 2 * 2) + 0.15 * Math.sin(cell.scalePhase * 1.5 + progress * Math.PI * 2 * 4);
             const scaledCellSize = cellSize * cellScale;
             const jitterX = cell.jitterAmp * Math.sin(cell.jitterPhaseX + progress * Math.PI * 2 * 3);
             const jitterY = cell.jitterAmp * Math.sin(cell.jitterPhaseY + progress * Math.PI * 2 * 3);

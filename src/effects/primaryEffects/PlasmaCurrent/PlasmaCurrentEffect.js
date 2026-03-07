@@ -63,9 +63,9 @@ export class PlasmaCurrentEffect extends LayerEffect {
                 jags,
                 forks,
                 radius: arcRadius * (0.6 + randomNumber(0, 0.4)),
-                speedMult: randomNumber(0.5, 2),
+                speedMult: getRandomIntInclusive(1, 2),
                 radiusBreathPhase: randomNumber(0, Math.PI * 2),
-                radiusBreathFreq: randomNumber(1, 3),
+                radiusBreathFreq: getRandomIntInclusive(1, 3),
             });
         }
 
@@ -124,7 +124,7 @@ export class PlasmaCurrentEffect extends LayerEffect {
         const progress = (currentFrame % numberOfFrames) / numberOfFrames;
         const rotAngle = progress * this.data.speed * arc.speedMult * 360;
         const pulse = findValue(0.6, 1.4, this.data.pulseFrequency, numberOfFrames, currentFrame);
-        const radiusBreath = 0.8 + 0.3 * Math.sin(arc.radiusBreathPhase + progress * Math.PI * 2 * arc.radiusBreathFreq) + 0.15 * Math.sin(arc.radiusBreathPhase * 1.7 + progress * Math.PI * 2 * arc.radiusBreathFreq * 2.5);
+        const radiusBreath = 0.8 + 0.3 * Math.sin(arc.radiusBreathPhase + progress * Math.PI * 2 * arc.radiusBreathFreq) + 0.15 * Math.sin(arc.radiusBreathPhase * 1.7 + progress * Math.PI * 2 * arc.radiusBreathFreq * 2);
         const arcRadius = arc.radius * pulse * radiusBreath;
 
         const startPos = findPointByAngleAndCircle(centerPos, arc.startAngle + rotAngle, arcRadius);

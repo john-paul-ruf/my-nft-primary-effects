@@ -45,13 +45,13 @@ export class VoronoiShatterEffect extends LayerEffect {
                 driftAmpX: randomNumber(driftAmplitude * 0.8, driftAmplitude * 1.5),
                 driftAmpY: randomNumber(driftAmplitude * 0.8, driftAmplitude * 1.5),
                 scalePhase: randomNumber(0, Math.PI * 2),
-                scaleFreq: randomNumber(1, 3),
+                scaleFreq: getRandomIntInclusive(1, 3),
                 orbitPhase: randomNumber(0, Math.PI * 2),
-                orbitSpeed: randomNumber(0.5, 2),
+                orbitSpeed: getRandomIntInclusive(1, 2),
                 orbitRadius: randomNumber(5, 25),
-                driftSpeedMult: randomNumber(0.5, 2),
+                driftSpeedMult: getRandomIntInclusive(1, 2),
                 dotPulsePhase: randomNumber(0, Math.PI * 2),
-                dotPulseFreq: randomNumber(1, 3),
+                dotPulseFreq: getRandomIntInclusive(1, 3),
             });
         }
 
@@ -96,7 +96,7 @@ export class VoronoiShatterEffect extends LayerEffect {
             const orbitAngle = seed.orbitPhase + progress * Math.PI * 2 * seed.orbitSpeed;
             const orbitDx = Math.cos(orbitAngle) * seed.orbitRadius;
             const orbitDy = Math.sin(orbitAngle) * seed.orbitRadius;
-            const seedScale = 0.8 + 0.3 * Math.sin(seed.scalePhase + progress * Math.PI * 2 * seed.scaleFreq) + 0.15 * Math.sin(seed.scalePhase * 1.4 + progress * Math.PI * 2 * seed.scaleFreq * 2.3);
+            const seedScale = 0.8 + 0.3 * Math.sin(seed.scalePhase + progress * Math.PI * 2 * seed.scaleFreq) + 0.15 * Math.sin(seed.scalePhase * 1.4 + progress * Math.PI * 2 * seed.scaleFreq * 2);
             return {
                 x: centerPos.x + (seed.offsetX + driftX + orbitDx) * pulse * seedScale,
                 y: centerPos.y + (seed.offsetY + driftY + orbitDy) * pulse * seedScale,
