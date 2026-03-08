@@ -20,7 +20,7 @@ export class VoronoiShatterConfig extends EffectConfig {
                     fieldRadius = new PercentageRange(new PercentageShortestSide(0.2), new PercentageShortestSide(0.45)),
                     cellEdgeResolution = new Range(24, 24),
                     showDelaunayEdges = false,
-                    edgeStyle = 'dots',
+                    edgeStyle = ['dots', 'connected', 'rings'],
                     speed = new Range(1, 2),
                     driftAmplitude = new Range(5, 20),
                     pulseFrequency = new Range(1, 3),

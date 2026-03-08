@@ -24,7 +24,7 @@ export class PhyllotaxisSpiralConfig extends EffectConfig {
                     speed = new Range(1, 2),
                     breathFrequency = new Range(1, 3),
                     breathAmplitude = 0.06,
-                    dotShape = 'ring',
+                    dotShape = ['ring', 'filled', 'polygon', 'star'],
                     polygonSides = new Range(5, 6),
                     showSpiralArms = false,
                     spiralArmCount = new Range(5, 8),

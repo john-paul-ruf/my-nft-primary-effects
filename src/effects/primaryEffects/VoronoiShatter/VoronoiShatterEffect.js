@@ -1,6 +1,6 @@
 import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
-import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
+import {getRandomIntInclusive, getRandomFromArray, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {VoronoiShatterConfig} from './VoronoiShatterConfig.js';
@@ -70,7 +70,7 @@ export class VoronoiShatterEffect extends LayerEffect {
             fieldRadius,
             cellEdgeResolution: getRandomIntInclusive(this.config.cellEdgeResolution.lower, this.config.cellEdgeResolution.upper),
             showDelaunayEdges: this.config.showDelaunayEdges,
-            edgeStyle: this.config.edgeStyle,
+            edgeStyle: Array.isArray(this.config.edgeStyle) ? getRandomFromArray(this.config.edgeStyle) : this.config.edgeStyle,
             speed: getRandomIntInclusive(this.config.speed.lower, this.config.speed.upper),
             pulseFrequency: getRandomIntInclusive(this.config.pulseFrequency.lower, this.config.pulseFrequency.upper),
             accentRange: {

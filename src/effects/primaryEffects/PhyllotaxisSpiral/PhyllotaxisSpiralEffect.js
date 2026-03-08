@@ -1,6 +1,6 @@
 import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
-import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
+import {getRandomIntInclusive, getRandomFromArray, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
 
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
@@ -73,7 +73,7 @@ export class PhyllotaxisSpiralEffect extends LayerEffect {
             speed: getRandomIntInclusive(this.config.speed.lower, this.config.speed.upper),
             breathFrequency: getRandomIntInclusive(this.config.breathFrequency.lower, this.config.breathFrequency.upper),
             breathAmplitude: this.config.breathAmplitude,
-            dotShape: this.config.dotShape,
+            dotShape: Array.isArray(this.config.dotShape) ? getRandomFromArray(this.config.dotShape) : this.config.dotShape,
             polygonSides: getRandomIntInclusive(this.config.polygonSides.lower, this.config.polygonSides.upper),
             showSpiralArms: this.config.showSpiralArms,
             spiralArmCount: getRandomIntInclusive(this.config.spiralArmCount.lower, this.config.spiralArmCount.upper),

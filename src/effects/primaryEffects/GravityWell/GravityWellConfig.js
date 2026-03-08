@@ -26,7 +26,7 @@ export class GravityWellConfig extends EffectConfig {
                     showConcentricRings = false,
                     concentricRingCount = new Range(3, 6),
                     showEventHorizon = false,
-                    wellPolarity = 'attract',
+                    wellPolarity = ['attract', 'repel', 'mixed'],
                     accentRange = new DynamicRange(new Range(1, 2), new Range(3, 7)),
                     blurRange = new DynamicRange(new Range(1, 2), new Range(3, 6)),
                     featherTimes = new Range(2, 6),

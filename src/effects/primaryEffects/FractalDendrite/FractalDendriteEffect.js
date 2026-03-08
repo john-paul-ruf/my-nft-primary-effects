@@ -1,6 +1,6 @@
 import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
-import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
+import {getRandomIntInclusive, getRandomFromArray, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
 
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
@@ -49,7 +49,7 @@ export class FractalDendriteEffect extends LayerEffect {
             speed: getRandomIntInclusive(this.config.speed.lower, this.config.speed.upper),
             growthOscillation: getRandomIntInclusive(this.config.growthOscillation.lower, this.config.growthOscillation.upper),
             useCurvedBranches: this.config.useCurvedBranches,
-            tipStyle: this.config.tipStyle,
+            tipStyle: Array.isArray(this.config.tipStyle) ? getRandomFromArray(this.config.tipStyle) : this.config.tipStyle,
             tipSize: getRandomIntInclusive(this.config.tipSize.lower, this.config.tipSize.upper),
             accentRange: {
                 lower: getRandomIntInclusive(this.config.accentRange.bottom.lower, this.config.accentRange.bottom.upper),

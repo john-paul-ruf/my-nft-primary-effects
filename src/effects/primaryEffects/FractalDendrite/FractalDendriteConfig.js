@@ -24,7 +24,7 @@ export class FractalDendriteConfig extends EffectConfig {
                     speed = new Range(1, 2),
                     growthOscillation = new Range(1, 3),
                     useCurvedBranches = false,
-                    tipStyle = 'none',
+                    tipStyle = ['none', 'dot', 'ring', 'star'],
                     tipSize = new Range(2, 6),
                     accentRange = new DynamicRange(new Range(1, 2), new Range(4, 8)),
                     blurRange = new DynamicRange(new Range(1, 2), new Range(3, 6)),

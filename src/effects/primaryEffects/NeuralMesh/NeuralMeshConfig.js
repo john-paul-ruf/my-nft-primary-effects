@@ -25,7 +25,7 @@ export class NeuralMeshConfig extends EffectConfig {
                     speed = new Range(1, 2),
                     useCurvedConnections = false,
                     showSignalPulse = false,
-                    neuronStyle = 'ring',
+                    neuronStyle = ['ring', 'filled', 'star'],
                     signalPulseSize = new Range(2, 5),
                     accentRange = new DynamicRange(new Range(1, 2), new Range(3, 7)),
                     blurRange = new DynamicRange(new Range(1, 2), new Range(3, 6)),

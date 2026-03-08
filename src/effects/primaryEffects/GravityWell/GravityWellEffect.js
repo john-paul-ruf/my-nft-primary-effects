@@ -1,6 +1,6 @@
 import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
-import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
+import {getRandomIntInclusive, getRandomFromArray, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
 
 import {findPointByAngleAndCircle} from 'my-nft-gen/src/core/math/drawingMath.js';
@@ -67,7 +67,7 @@ export class GravityWellEffect extends LayerEffect {
             showConcentricRings: this.config.showConcentricRings,
             concentricRingCount: getRandomIntInclusive(this.config.concentricRingCount.lower, this.config.concentricRingCount.upper),
             showEventHorizon: this.config.showEventHorizon,
-            wellPolarity: this.config.wellPolarity,
+            wellPolarity: Array.isArray(this.config.wellPolarity) ? getRandomFromArray(this.config.wellPolarity) : this.config.wellPolarity,
             gridPointsPerLine: gridLines * 2,
             accentRange: {
                 lower: getRandomIntInclusive(this.config.accentRange.bottom.lower, this.config.accentRange.bottom.upper),

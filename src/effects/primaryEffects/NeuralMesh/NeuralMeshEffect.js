@@ -1,6 +1,6 @@
 import {LayerEffect} from 'my-nft-gen/src/core/layer/LayerEffect.js';
 import {Canvas2dFactory} from 'my-nft-gen/src/core/factory/canvas/Canvas2dFactory.js';
-import {getRandomIntInclusive, randomNumber} from 'my-nft-gen/src/core/math/random.js';
+import {getRandomIntInclusive, getRandomFromArray, randomNumber} from 'my-nft-gen/src/core/math/random.js';
 import {findValue} from 'my-nft-gen/src/core/math/findValue.js';
 import {Settings} from 'my-nft-gen/src/core/Settings.js';
 import {NeuralMeshConfig} from './NeuralMeshConfig.js';
@@ -102,7 +102,7 @@ export class NeuralMeshEffect extends LayerEffect {
             speed: getRandomIntInclusive(this.config.speed.lower, this.config.speed.upper),
             useCurvedConnections: this.config.useCurvedConnections,
             showSignalPulse: this.config.showSignalPulse,
-            neuronStyle: this.config.neuronStyle,
+            neuronStyle: Array.isArray(this.config.neuronStyle) ? getRandomFromArray(this.config.neuronStyle) : this.config.neuronStyle,
             signalPulseSize: getRandomIntInclusive(this.config.signalPulseSize.lower, this.config.signalPulseSize.upper),
             accentRange: {
                 lower: getRandomIntInclusive(this.config.accentRange.bottom.lower, this.config.accentRange.bottom.upper),
